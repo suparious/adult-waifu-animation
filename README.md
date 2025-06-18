@@ -142,6 +142,18 @@ This system is designed for adult interactions. Please ensure:
 - Privacy-conscious deployment
 - Responsible use of the platform
 
+## What's New (v1.3.0)
+
+### 💝 Affection/Progression System
+- **Relationship Tracking**: Build affection from 0-100 through interactions
+- **Content Unlocking**: New animations, dialogues, and outfits at milestones
+- **Persistent Progress**: Your relationship continues across sessions
+- **Visual Feedback**: Real-time affection meter with change indicators
+- **Dynamic AI Responses**: Waifus respond differently based on affection level
+- **Milestone Messages**: Special messages at key relationship points
+
+See [AFFECTION_SYSTEM.md](docs/AFFECTION_SYSTEM.md) for details.
+
 ## What's New (v1.2.0)
 
 ### 📋 Centralized Frontend Configuration

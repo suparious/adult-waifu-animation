@@ -4,6 +4,7 @@ import WaifuCanvas from './components/WaifuCanvas';
 import ChatInterface from './components/ChatInterface';
 import ModelSelector from './components/ModelSelector';
 import VoiceSynthesis from './components/VoiceSynthesis';
+import AffectionMeter from './components/AffectionMeter';
 import config from './config';
 import './App.css';
 
@@ -106,6 +107,8 @@ function App() {
   const [currentEmotion, setCurrentEmotion] = useState('neutral');
   const [waifuPersonality, setWaifuPersonality] = useState('');
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [affectionData, setAffectionData] = useState(null);
+  const [waifuName, setWaifuName] = useState('Luna');
   const wsRef = useRef(null);
   const clientIdRef = useRef(`client-${Date.now()}`);
 
@@ -198,6 +201,17 @@ function App() {
           // Handle animation sequence
           playAnimationSequence(data.animation.sequence);
         }
+        
+        // Update affection data
+        if (data.affection) {
+          setAffectionData(data.affection);
+        }
+        
+        // Handle milestone message
+        if (data.is_milestone && data.milestone_message) {
+          // Milestone messages are handled by AffectionMeter component
+          console.log('Milestone reached:', data.milestone_message);
+        }
         break;
       
       case 'model_changed':
@@ -260,10 +274,16 @@ function App() {
       const data = await response.json();
       if (!data.error) {
         setWaifuPersonality(data.personality);
+        setWaifuName(data.name || modelId);
       }
     } catch (error) {
       console.error('Failed to fetch waifu personality:', error);
     }
+  };
+
+  const handleUnlock = (unlocked) => {
+    console.log('Content unlocked:', unlocked);
+    // Future: Update available animations, outfits, etc.
   };
 
   // Fetch initial waifu personality
@@ -306,6 +326,12 @@ function App() {
           modelId={selectedModel}
           animationState={animationState}
           isSpeaking={isSpeaking}
+        />
+        <AffectionMeter
+          waifuId={selectedModel}
+          waifuName={waifuName}
+          affectionData={affectionData}
+          onUnlock={handleUnlock}
         />
         <VoiceSynthesis
           message={lastWaifuMessage}

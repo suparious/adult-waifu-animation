@@ -258,6 +258,11 @@ const baseConfig = {
         small: 8,
         medium: 15,
         large: 20
+      },
+      spacing: {
+        small: 10,
+        medium: 15,
+        large: 20
       }
     },
     

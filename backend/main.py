@@ -18,6 +18,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 from waifu_manager import WaifuModelManager, WaifuProfile
 from llm_config import LLMClient, LLMProvider, get_llm_config, reload_config
+from affection_manager import get_affection_manager
+from database import get_db
 
 # Load environment variables
 load_dotenv(override=True)  # Override ensures .env is reloaded
@@ -104,6 +106,9 @@ class WaifuModel(BaseModel):
 # Store active connections and their states
 connections: Dict[str, Dict] = {}
 
+# Initialize affection manager
+affection_manager = get_affection_manager()
+
 def analyze_emotion(text: str) -> str:
     """Simple emotion detection from text"""
     text_lower = text.lower()
@@ -151,7 +156,7 @@ def generate_animation_sequence(emotion: str, intensity: float = 0.5) -> List[Di
     
     return sequence
 
-async def call_llm_api(prompt: str, model_personality: str, chat_history: List[Dict] = None) -> str:
+async def call_llm_api(prompt: str, model_personality: str, chat_history: List[Dict] = None, affection_modifier: str = None) -> str:
     """Call LLM API for chat responses (supports vLLM, Ollama, OpenAI)"""
     
     # Reload config to pick up any .env changes
@@ -160,7 +165,9 @@ async def call_llm_api(prompt: str, model_personality: str, chat_history: List[D
     # Build conversation context
     system_prompt = f"""You are {model_personality}
 
-IMPORTANT: You should embody this character fully. Express emotions through actions in *asterisks* and use casual, flirty language when appropriate. Keep responses engaging and playful."""
+IMPORTANT: You should embody this character fully. Express emotions through actions in *asterisks* and use casual, flirty language when appropriate. Keep responses engaging and playful.
+
+{affection_modifier if affection_modifier else ''}"""
     
     # Build conversation history for context
     full_prompt = ""
@@ -288,6 +295,26 @@ async def get_model(model_id: str):
         return WaifuModel.from_profile(profile)
     return {"error": "Model not found"}
 
+@app.get("/api/affection/{session_id}")
+async def get_affection_levels(session_id: str):
+    """Get affection levels for all waifus in a session"""
+    db = get_db()
+    stats = db.get_session_stats(session_id)
+    return stats
+
+@app.get("/api/affection/{session_id}/{waifu_id}")
+async def get_waifu_affection(session_id: str, waifu_id: str):
+    """Get affection data for specific waifu"""
+    db = get_db()
+    level = db.get_affection_level(session_id, waifu_id)
+    unlocked = db.get_unlocked_content(session_id, waifu_id)
+    
+    return {
+        "level": level,
+        "unlocked_content": unlocked,
+        "dialogue_level": affection_manager.get_dialogue_level(level)
+    }
+
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
     await websocket.accept()
@@ -297,8 +324,13 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
         "websocket": websocket,
         "model": "luna",
         "animation_state": AnimationState(),
-        "chat_history": []
+        "chat_history": [],
+        "session_id": client_id  # Use client_id as session_id for now
     }
+    
+    # Initialize session in database
+    db = get_db()
+    db.get_or_create_session(client_id)
     
     try:
         # Send initial connection message
@@ -347,15 +379,42 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                     valence=emotion_data["valence"]
                 )
                 
-                # Get AI response with chat history
+                # Get current affection level
+                session_id = connections[client_id]["session_id"]
+                current_affection = db.get_affection_level(session_id, model_id)
+                
+                # Get affection-based response modifier
+                affection_modifier = affection_manager.get_affection_response_modifier(current_affection)
+                
+                # Get AI response with chat history and affection modifier
                 ai_response = await call_llm_api(
                     user_message, 
                     profile.full_personality,
-                    connections[client_id]["chat_history"]
+                    connections[client_id]["chat_history"],
+                    affection_modifier
                 )
                 
-                # Send response with animation data
-                await websocket.send_json({
+                # Process affection changes
+                affection_result = affection_manager.process_interaction(
+                    session_id,
+                    model_id,
+                    user_message,
+                    ai_response,
+                    emotion,
+                    profile.dict()
+                )
+                
+                # Get available animations including unlocked ones
+                base_animations = ANIMATION_ACTIONS.get(emotion, ANIMATION_ACTIONS["neutral"])
+                available_animations = affection_manager.get_available_animations(
+                    session_id, model_id, base_animations
+                )
+                
+                # Update animation sequence with available animations
+                animation_sequence = generate_animation_sequence(emotion, emotion_data["arousal"])
+                
+                # Send response with animation and affection data
+                response_data = {
                     "type": "response",
                     "message": ai_response,
                     "emotion": emotion,
@@ -363,8 +422,23 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                         "sequence": animation_sequence,
                         "state": connections[client_id]["animation_state"].dict()
                     },
+                    "affection": {
+                        "previous_level": affection_result["previous_level"],
+                        "new_level": affection_result["new_level"],
+                        "change": affection_result["change"],
+                        "reason": affection_result["reason"],
+                        "unlocked": affection_result["unlocked"],
+                        "dialogue_level": affection_manager.get_dialogue_level(affection_result["new_level"])
+                    },
                     "timestamp": datetime.now().isoformat()
-                })
+                }
+                
+                # Add milestone message if applicable
+                if affection_result["is_milestone"]:
+                    response_data["milestone_message"] = affection_result["milestone_message"]
+                    response_data["is_milestone"] = True
+                
+                await websocket.send_json(response_data)
                 
                 # Store in chat history
                 connections[client_id]["chat_history"].extend([
