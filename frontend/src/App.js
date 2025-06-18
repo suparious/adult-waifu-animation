@@ -39,10 +39,29 @@ const Header = styled.div`
   right: 0;
   padding: 20px;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 15px;
   background: linear-gradient(180deg, ${config.ui.colors.background.glass} 0%, transparent 100%);
   z-index: 10;
+`;
+
+const HeaderTop = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+`;
+
+const ModelSelectorContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 5px;
+`;
+
+const SelectorLabel = styled.span`
+  font-size: 14px;
+  color: ${config.ui.colors.text.secondary};
+  font-weight: 500;
 `;
 
 const Title = styled.h1`
@@ -295,32 +314,37 @@ function App() {
     <AppContainer>
       <AnimationSection>
         <Header>
-          <TitleSection>
-            <Title>Waifu Animation Chat</Title>
-            {systemInfo ? (
-              <SystemInfo>
-                <span className="provider">
-                  🤖 {systemInfo.llm.provider}
-                </span>
-                <span className="separator">•</span>
-                <span className="model">
-                  {systemInfo.llm.model_display}
-                </span>
-                <span className="separator">•</span>
-                <span className="version">
-                  v{systemInfo.version}
-                </span>
-              </SystemInfo>
-            ) : (
-              <SystemInfo>
-                <span style={{ opacity: 0.5 }}>Loading system info...</span>
-              </SystemInfo>
-            )}
-          </TitleSection>
-          <ModelSelector 
-            selectedModel={selectedModel}
-            onModelChange={changeModel}
-          />
+          <HeaderTop>
+            <TitleSection>
+              <Title>Waifu Animation Chat</Title>
+              {systemInfo ? (
+                <SystemInfo>
+                  <span className="provider">
+                    🤖 {systemInfo.llm.provider}
+                  </span>
+                  <span className="separator">•</span>
+                  <span className="model">
+                    {systemInfo.llm.model_display}
+                  </span>
+                  <span className="separator">•</span>
+                  <span className="version">
+                    v{systemInfo.version}
+                  </span>
+                </SystemInfo>
+              ) : (
+                <SystemInfo>
+                  <span style={{ opacity: 0.5 }}>Loading system info...</span>
+                </SystemInfo>
+              )}
+            </TitleSection>
+          </HeaderTop>
+          <ModelSelectorContainer>
+            <SelectorLabel>Choose Your Waifu:</SelectorLabel>
+            <ModelSelector 
+              selectedModel={selectedModel}
+              onModelChange={changeModel}
+            />
+          </ModelSelectorContainer>
         </Header>
         <WaifuCanvas 
           modelId={selectedModel}

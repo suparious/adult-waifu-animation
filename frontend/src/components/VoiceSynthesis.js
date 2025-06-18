@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import styled from 'styled-components';
+import styled, { css, keyframes } from 'styled-components';
 import config from '../config';
 
 const VoiceControls = styled.div`
@@ -76,6 +76,11 @@ const VoiceIndicator = styled.div`
   transition: opacity ${config.ui.animations.transitionDuration} ease;
 `;
 
+const wave = keyframes`
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(var(--amplitude)); }
+`;
+
 const WaveformBar = styled.div`
   position: absolute;
   bottom: 50%;
@@ -85,13 +90,11 @@ const WaveformBar = styled.div`
   background: linear-gradient(to top, ${config.ui.colors.primary}, ${config.ui.colors.secondary});
   border-radius: 2px;
   transform-origin: bottom;
-  animation: ${props => props.speaking ? `wave ${config.voice.visualization.animationSpeed}s ease-in-out infinite` : 'none'};
-  animation-delay: ${props => props.delay}s;
-
-  @keyframes wave {
-    0%, 100% { transform: scaleY(1); }
-    50% { transform: scaleY(${props => props.amplitude}); }
-  }
+  --amplitude: ${props => props.amplitude};
+  ${props => props.speaking && css`
+    animation: ${wave} ${config.voice.visualization.animationSpeed}s ease-in-out infinite;
+    animation-delay: ${props.delay}s;
+  `}
 `;
 
 class VoiceSynthesisManager {

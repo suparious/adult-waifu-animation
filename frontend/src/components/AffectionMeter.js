@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import styled, { keyframes } from 'styled-components';
+import styled, { keyframes, css } from 'styled-components';
 import config from '../config';
 
 const pulse = keyframes`
@@ -34,7 +34,9 @@ const AffectionHeader = styled.div`
 
 const HeartIcon = styled.div`
   font-size: 24px;
-  animation: ${props => props.isMilestone ? pulse : 'none'} 1s ease-in-out infinite;
+  ${props => props.isMilestone && css`
+    animation: ${pulse} 1s ease-in-out infinite;
+  `}
   color: ${props => {
     if (props.level >= 75) return '#ff1493';
     if (props.level >= 50) return '#ff69b4';
@@ -72,7 +74,7 @@ const AffectionBar = styled.div`
   transition: width 0.5s ease;
   border-radius: ${config.ui.layout.borderRadius.medium}px;
   
-  ${props => props.isAnimating && `
+  ${props => props.isAnimating && css`
     background: linear-gradient(90deg, 
       ${props.level >= 75 ? '#ff1493' : '#ff69b4'} 0%, 
       ${props.level >= 50 ? '#ff1493' : '#ff86b7'} 50%,
