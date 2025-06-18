@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import config from '../config';
 
 const SelectorContainer = styled.div`
   position: relative;
@@ -9,9 +10,9 @@ const SelectorContainer = styled.div`
 
 const CurrentModel = styled(motion.button)`
   background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(${config.ui.animations.glassBlur}px);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
+  border-radius: ${config.ui.layout.borderRadius.medium}px;
   padding: 10px 20px;
   color: white;
   cursor: pointer;
@@ -19,11 +20,11 @@ const CurrentModel = styled(motion.button)`
   align-items: center;
   gap: 10px;
   font-size: 16px;
-  transition: all 0.3s ease;
+  transition: all ${config.ui.animations.transitionDuration} ease;
   
   &:hover {
     background: rgba(255, 255, 255, 0.15);
-    border-color: #ff6ec7;
+    border-color: ${config.ui.colors.primary};
   }
 `;
 
@@ -32,7 +33,7 @@ const ModelImage = styled.img`
   height: 32px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid #ff6ec7;
+  border: 2px solid ${config.ui.colors.primary};
 `;
 
 const DropdownMenu = styled(motion.div)`
@@ -40,10 +41,10 @@ const DropdownMenu = styled(motion.div)`
   top: 100%;
   right: 0;
   margin-top: 10px;
-  background: rgba(0, 0, 0, 0.9);
+  background: ${config.ui.colors.background.glass};
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
+  border-radius: ${config.ui.layout.borderRadius.medium}px;
   overflow: hidden;
   min-width: 250px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
@@ -55,7 +56,7 @@ const ModelOption = styled(motion.div)`
   display: flex;
   align-items: center;
   gap: 15px;
-  transition: all 0.3s ease;
+  transition: all ${config.ui.animations.transitionDuration} ease;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   
   &:last-child {
@@ -90,13 +91,13 @@ const ModelPersonality = styled.div`
 const ModelThumbnail = styled.img`
   width: 48px;
   height: 48px;
-  border-radius: 8px;
+  border-radius: ${config.ui.layout.borderRadius.small}px;
   object-fit: cover;
   border: 2px solid transparent;
-  transition: all 0.3s ease;
+  transition: all ${config.ui.animations.transitionDuration} ease;
   
   ${props => props.$selected && `
-    border-color: #ff6ec7;
+    border-color: ${config.ui.colors.primary};
   `}
 `;
 
@@ -122,7 +123,7 @@ function ModelSelector({ selectedModel, onModelChange }) {
 
   const fetchModels = async () => {
     try {
-      const response = await axios.get('http://localhost:8000/api/models');
+      const response = await axios.get(`${config.api.baseUrl}${config.api.endpoints.models}`);
       setModels(response.data.models);
     } catch (error) {
       console.error('Failed to fetch models:', error);
@@ -155,7 +156,7 @@ function ModelSelector({ selectedModel, onModelChange }) {
     <SelectorContainer>
       <CurrentModel
         onClick={() => setIsOpen(!isOpen)}
-        whileHover={{ scale: 1.05 }}
+        whileHover={{ scale: config.ui.animations.hoverScale }}
         whileTap={{ scale: 0.95 }}
       >
         {currentModelData && (

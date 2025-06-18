@@ -1,0 +1,47 @@
+/**
+ * Local Configuration Override Example
+ * Copy this file to config.local.js to override default settings
+ * config.local.js is git-ignored, so your local settings won't be committed
+ */
+
+const localConfig = {
+  // Example: Use a different backend URL
+  // api: {
+  //   baseUrl: 'http://192.168.1.100:8000',
+  //   websocketUrl: 'ws://192.168.1.100:8000'
+  // },
+
+  // Example: Adjust animation intensities
+  // animation: {
+  //   base: {
+  //     breathingIntensity: 0.05,
+  //     swayIntensity: 0.2
+  //   }
+  // },
+
+  // Example: Change voice settings
+  // voice: {
+  //   defaultVolume: 1.0,
+  //   waifuProfiles: {
+  //     luna: {
+  //       pitch: 1.5 // Even higher pitch for Luna
+  //     }
+  //   }
+  // },
+
+  // Example: Reduce particles for better performance
+  // visual: {
+  //   particles: {
+  //     count: 25
+  //   }
+  // },
+
+  // Example: Enable debug features
+  // debug: {
+  //   logAnimationStates: true,
+  //   logVoiceEvents: true,
+  //   slowMotion: true
+  // }
+};
+
+export default localConfig;

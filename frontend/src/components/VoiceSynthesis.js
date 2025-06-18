@@ -1,36 +1,37 @@
 import React, { useEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
+import config from '../config';
 
 const VoiceControls = styled.div`
   position: absolute;
-  bottom: 20px;
-  right: 20px;
+  bottom: ${config.ui.voiceControls.position.bottom}px;
+  right: ${config.ui.voiceControls.position.right}px;
   display: flex;
   align-items: center;
   gap: 10px;
-  background: rgba(0, 0, 0, 0.7);
+  background: ${config.ui.colors.background.glass};
   padding: 10px 15px;
-  border-radius: 20px;
-  backdrop-filter: blur(10px);
+  border-radius: ${config.ui.layout.borderRadius.large}px;
+  backdrop-filter: blur(${config.ui.animations.glassBlur}px);
   z-index: 100;
 `;
 
 const VoiceToggle = styled.button`
-  background: ${props => props.enabled ? '#ff6ec7' : '#666'};
+  background: ${props => props.enabled ? config.ui.colors.primary : '#666'};
   border: none;
   color: white;
   padding: 8px 16px;
-  border-radius: 15px;
+  border-radius: ${config.ui.layout.borderRadius.medium}px;
   cursor: pointer;
   font-size: 14px;
   display: flex;
   align-items: center;
   gap: 5px;
-  transition: all 0.3s ease;
+  transition: all ${config.ui.animations.transitionDuration} ease;
 
   &:hover {
-    background: ${props => props.enabled ? '#ff9472' : '#888'};
-    transform: scale(1.05);
+    background: ${props => props.enabled ? config.ui.colors.secondary : '#888'};
+    transform: scale(${config.ui.animations.hoverScale});
   }
 
   svg {
@@ -40,7 +41,7 @@ const VoiceToggle = styled.button`
 `;
 
 const VolumeSlider = styled.input`
-  width: 80px;
+  width: ${config.ui.voiceControls.volumeSliderWidth}px;
   height: 4px;
   background: #333;
   outline: none;
@@ -57,7 +58,7 @@ const VolumeSlider = styled.input`
     appearance: none;
     width: 12px;
     height: 12px;
-    background: #ff6ec7;
+    background: ${config.ui.colors.primary};
     cursor: pointer;
     border-radius: 50%;
   }
@@ -68,11 +69,11 @@ const VoiceIndicator = styled.div`
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 200px;
-  height: 200px;
+  width: ${config.voice.visualization.waveformWidth}px;
+  height: ${config.voice.visualization.waveformHeight}px;
   pointer-events: none;
   opacity: ${props => props.speaking ? 0.6 : 0};
-  transition: opacity 0.3s ease;
+  transition: opacity ${config.ui.animations.transitionDuration} ease;
 `;
 
 const WaveformBar = styled.div`
@@ -81,10 +82,10 @@ const WaveformBar = styled.div`
   left: ${props => props.position}%;
   width: 3px;
   height: ${props => props.height}px;
-  background: linear-gradient(to top, #ff6ec7, #ff9472);
+  background: linear-gradient(to top, ${config.ui.colors.primary}, ${config.ui.colors.secondary});
   border-radius: 2px;
   transform-origin: bottom;
-  animation: ${props => props.speaking ? 'wave 0.5s ease-in-out infinite' : 'none'};
+  animation: ${props => props.speaking ? `wave ${config.voice.visualization.animationSpeed}s ease-in-out infinite` : 'none'};
   animation-delay: ${props => props.delay}s;
 
   @keyframes wave {
@@ -116,25 +117,11 @@ class VoiceSynthesisManager {
   }
 
   getVoiceForWaifu(waifuId, personality) {
-    // Select appropriate voice based on waifu personality
-    const preferredVoices = {
-      luna: {
-        // Prefer younger, energetic female voices
-        keywords: ['female', 'woman', 'girl', 'Google UK English Female', 'Microsoft Zira', 'Samantha'],
-        fallbackLang: 'en-US'
-      },
-      sakura: {
-        // Prefer softer, gentler female voices
-        keywords: ['female', 'woman', 'Google US English', 'Microsoft Haruka', 'Kyoko', 'Ting-Ting'],
-        fallbackLang: 'en-US'
-      }
-    };
-
-    const prefs = preferredVoices[waifuId] || preferredVoices.luna;
+    const prefs = config.voice.waifuProfiles[waifuId] || config.voice.waifuProfiles.luna;
     
     // Try to find a matching voice
     let selectedVoice = this.voices.find(voice => 
-      prefs.keywords.some(keyword => voice.name.includes(keyword))
+      prefs.preferredVoices.some(keyword => voice.name.includes(keyword))
     );
 
     // Fallback to any female voice
@@ -181,62 +168,11 @@ class VoiceSynthesisManager {
   }
 
   getBaseVoiceParams(waifuId, personality) {
-    // Base parameters for each waifu
-    const params = {
-      luna: {
-        rate: 1.1,      // Slightly faster, energetic
-        pitch: 1.3,     // Higher pitch, playful
-      },
-      sakura: {
-        rate: 0.9,      // Slower, thoughtful
-        pitch: 1.2,     // Soft, feminine
-      }
-    };
-
-    return params[waifuId] || params.luna;
+    return config.voice.waifuProfiles[waifuId] || config.voice.waifuProfiles.luna;
   }
 
   getEmotionModifiers(emotion) {
-    // Emotion-based voice modifiers
-    const modifiers = {
-      happy: {
-        rateMultiplier: 1.1,
-        pitchMultiplier: 1.1,
-        volumeMultiplier: 1.0
-      },
-      shy: {
-        rateMultiplier: 0.9,
-        pitchMultiplier: 0.95,
-        volumeMultiplier: 0.7
-      },
-      flirty: {
-        rateMultiplier: 0.95,
-        pitchMultiplier: 1.05,
-        volumeMultiplier: 0.9
-      },
-      excited: {
-        rateMultiplier: 1.2,
-        pitchMultiplier: 1.15,
-        volumeMultiplier: 1.1
-      },
-      seductive: {
-        rateMultiplier: 0.8,
-        pitchMultiplier: 0.9,
-        volumeMultiplier: 0.8
-      },
-      affectionate: {
-        rateMultiplier: 0.95,
-        pitchMultiplier: 1.0,
-        volumeMultiplier: 0.85
-      },
-      neutral: {
-        rateMultiplier: 1.0,
-        pitchMultiplier: 1.0,
-        volumeMultiplier: 1.0
-      }
-    };
-
-    return modifiers[emotion] || modifiers.neutral;
+    return config.voice.emotionModifiers[emotion] || config.voice.emotionModifiers.neutral;
   }
 
   speak(text, waifuId, emotion, personality, onStart, onEnd) {
@@ -250,11 +186,17 @@ class VoiceSynthesisManager {
     utterance.onstart = () => {
       this.currentUtterance = utterance;
       if (onStart) onStart();
+      if (config.debug.logVoiceEvents) {
+        console.log('Voice synthesis started:', { text: text.substring(0, 50), waifuId, emotion });
+      }
     };
 
     utterance.onend = () => {
       this.currentUtterance = null;
       if (onEnd) onEnd();
+      if (config.debug.logVoiceEvents) {
+        console.log('Voice synthesis ended');
+      }
     };
 
     utterance.onerror = (error) => {
@@ -284,8 +226,8 @@ class VoiceSynthesisManager {
 }
 
 function VoiceSynthesis({ message, waifuId, emotion, waifuPersonality, onSpeakingChange }) {
-  const [voiceEnabled, setVoiceEnabled] = useState(true);
-  const [volume, setVolume] = useState(0.8);
+  const [voiceEnabled, setVoiceEnabled] = useState(config.voice.enabled);
+  const [volume, setVolume] = useState(config.voice.defaultVolume);
   const [speaking, setSpeaking] = useState(false);
   const voiceManagerRef = useRef(null);
 
@@ -374,16 +316,23 @@ function VoiceSynthesis({ message, waifuId, emotion, waifuPersonality, onSpeakin
 
       {/* Visual Voice Indicator */}
       <VoiceIndicator speaking={speaking}>
-        {[...Array(8)].map((_, i) => (
-          <WaveformBar
-            key={i}
-            speaking={speaking}
-            position={12.5 * i + 6.25}
-            height={40 + Math.sin(i) * 20}
-            amplitude={1.5 + Math.sin(i * 0.5) * 0.5}
-            delay={i * 0.05}
-          />
-        ))}
+        {[...Array(config.voice.visualization.waveformBars)].map((_, i) => {
+          const position = (100 / config.voice.visualization.waveformBars) * i + (50 / config.voice.visualization.waveformBars);
+          const baseHeight = config.voice.visualization.baseBarHeight;
+          const variation = config.voice.visualization.barHeightVariation;
+          const [minAmp, maxAmp] = config.voice.visualization.amplitudeRange;
+          
+          return (
+            <WaveformBar
+              key={i}
+              speaking={speaking}
+              position={position}
+              height={baseHeight + Math.sin(i) * variation}
+              amplitude={minAmp + Math.sin(i * 0.5) * (maxAmp - minAmp)}
+              delay={i * 0.05}
+            />
+          );
+        })}
       </VoiceIndicator>
     </>
   );

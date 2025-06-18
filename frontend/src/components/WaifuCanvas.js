@@ -4,6 +4,7 @@ import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
 import { motion } from 'framer-motion';
 import styled from 'styled-components';
+import config from '../config';
 
 const CanvasContainer = styled.div`
   flex: 1;
@@ -33,10 +34,10 @@ function AnimatedWaifu({ modelId, animationState, isSpeaking }) {
   
   // Animation parameters based on state
   const animParams = useRef({
-    breathingSpeed: 1,
-    breathingIntensity: 0.02,
-    swaySpeed: 0.5,
-    swayIntensity: 0.1,
+    breathingSpeed: config.animation.base.breathingSpeed,
+    breathingIntensity: config.animation.base.breathingIntensity,
+    swaySpeed: config.animation.base.swaySpeed,
+    swayIntensity: config.animation.base.swayIntensity,
     bounceSpeed: 0,
     bounceIntensity: 0
   });
@@ -122,49 +123,29 @@ function AnimatedWaifu({ modelId, animationState, isSpeaking }) {
   // Update animation parameters based on state
   useEffect(() => {
     const { emotion, intensity } = animationState;
+    const emotionConfig = config.animation.emotions[emotion] || config.animation.emotions.neutral;
     
-    // Base breathing
-    animParams.current.breathingSpeed = 1 + intensity * 0.5;
-    animParams.current.breathingIntensity = 0.02 + intensity * 0.03;
+    // Apply emotion-specific parameters
+    Object.keys(emotionConfig).forEach(key => {
+      if (key in animParams.current) {
+        animParams.current[key] = emotionConfig[key];
+      }
+    });
     
-    // Emotion-specific parameters
-    switch (emotion) {
-      case 'happy':
-        animParams.current.bounceSpeed = 2;
-        animParams.current.bounceIntensity = 0.1 * intensity;
-        break;
-      case 'flirty':
-        animParams.current.swaySpeed = 1;
-        animParams.current.swayIntensity = 0.2 * intensity;
-        break;
-      case 'excited':
-        animParams.current.bounceSpeed = 3;
-        animParams.current.bounceIntensity = 0.15 * intensity;
-        animParams.current.breathingSpeed = 2;
-        break;
-      case 'shy':
-        animParams.current.swaySpeed = 0.3;
-        animParams.current.swayIntensity = 0.05;
-        animParams.current.breathingIntensity = 0.01;
-        break;
-      case 'seductive':
-        animParams.current.swaySpeed = 0.8;
-        animParams.current.swayIntensity = 0.25 * intensity;
-        animParams.current.breathingSpeed = 0.8;
-        animParams.current.breathingIntensity = 0.04;
-        break;
-      default:
-        // Reset to neutral
-        animParams.current.bounceSpeed = 0;
-        animParams.current.bounceIntensity = 0;
+    // Apply intensity scaling for certain parameters
+    if (emotionConfig.bounceIntensity !== undefined) {
+      animParams.current.bounceIntensity = emotionConfig.bounceIntensity * intensity;
+    }
+    if (emotionConfig.swayIntensity !== undefined) {
+      animParams.current.swayIntensity = emotionConfig.swayIntensity * intensity;
     }
 
-    // Add speaking animation
+    // Add speaking animation modifiers
     if (isSpeaking) {
-      animParams.current.breathingSpeed *= 1.3;
-      animParams.current.breathingIntensity *= 1.2;
+      animParams.current.breathingSpeed *= config.animation.speaking.breathingMultiplier;
+      animParams.current.breathingIntensity *= config.animation.speaking.intensityMultiplier;
     }
-  }, [animationState]);
+  }, [animationState, isSpeaking]);
 
   // Animation loop
   useFrame((state, delta) => {
@@ -190,32 +171,37 @@ function AnimatedWaifu({ modelId, animationState, isSpeaking }) {
     }
     
     // Subtle idle animation
-    mesh.rotation.y = Math.sin(time * 0.3) * 0.05;
+    mesh.rotation.y = Math.sin(time * config.animation.base.idleRotationSpeed) * config.animation.base.idleRotationAmount;
     
     // Speaking animation - subtle head movement
     if (isSpeaking) {
-      const speakBob = Math.sin(time * 8) * 0.01;
+      const speakBob = Math.sin(time * config.animation.speaking.headBobSpeed) * config.animation.speaking.headBobAmount;
       mesh.position.y += speakBob;
-      mesh.rotation.x = Math.sin(time * 6) * 0.02;
+      mesh.rotation.x = Math.sin(time * config.animation.speaking.headRotationSpeed) * config.animation.speaking.headRotationAmount;
     }
   });
 
   // Create geometry with bones for more complex animation
-  const geometry = new THREE.PlaneGeometry(3, 6, 8, 16);
+  const geometry = new THREE.PlaneGeometry(
+    config.visual.mesh.geometry.width,
+    config.visual.mesh.geometry.height,
+    config.visual.mesh.geometry.widthSegments,
+    config.visual.mesh.geometry.heightSegments
+  );
   
   // Add wave deformation to vertices for cloth/hair physics
   useFrame((state) => {
-    if (!meshRef.current) return;
+    if (!meshRef.current || !config.visual.waveDeformation.enabled) return;
     const positions = meshRef.current.geometry.attributes.position;
     const vertex = new THREE.Vector3();
     
     for (let i = 0; i < positions.count; i++) {
       vertex.fromBufferAttribute(positions, i);
-      const waveX = Math.sin(vertex.y * 2 + time * 2) * 0.02;
-      const waveY = Math.sin(vertex.x * 3 + time * 3) * 0.01;
+      const waveX = Math.sin(vertex.y * config.visual.waveDeformation.frequencyX + time * config.visual.waveDeformation.speed) * config.visual.waveDeformation.amplitudeX;
+      const waveY = Math.sin(vertex.x * config.visual.waveDeformation.frequencyY + time * config.visual.waveDeformation.speed) * config.visual.waveDeformation.amplitudeY;
       
       // Apply wave only to upper part (hair/clothes)
-      if (vertex.y > 0) {
+      if (vertex.y > config.visual.waveDeformation.upperBodyThreshold) {
         positions.setXYZ(i, vertex.x + waveX, vertex.y + waveY, vertex.z);
       }
     }
@@ -230,9 +216,10 @@ function AnimatedWaifu({ modelId, animationState, isSpeaking }) {
       <meshStandardMaterial 
         map={texture}
         transparent
-        side={THREE.DoubleSide}
-        emissive="#ff6ec7"
-        emissiveIntensity={isSpeaking ? 0.2 : 0.1}
+        side={config.visual.mesh.material.side === 'double' ? THREE.DoubleSide : 
+              config.visual.mesh.material.side === 'front' ? THREE.FrontSide : THREE.BackSide}
+        emissive={config.visual.mesh.material.emissiveColor}
+        emissiveIntensity={isSpeaking ? config.animation.speaking.emissiveIntensity : config.visual.mesh.material.defaultEmissiveIntensity}
       />
     </mesh>
   );
@@ -243,31 +230,55 @@ function WaifuCanvas({ modelId, animationState, isSpeaking }) {
   return (
     <CanvasContainer>
       <Canvas>
-        <PerspectiveCamera makeDefault position={[0, 0, 8]} />
+        <PerspectiveCamera 
+          makeDefault 
+          position={config.visual.camera.position} 
+          fov={config.visual.camera.fov}
+          near={config.visual.camera.near}
+          far={config.visual.camera.far}
+        />
         <OrbitControls 
-          enablePan={false}
-          minDistance={5}
-          maxDistance={12}
-          minPolarAngle={Math.PI / 3}
-          maxPolarAngle={Math.PI / 2}
+          enablePan={config.visual.camera.controls.enablePan}
+          minDistance={config.visual.camera.controls.minDistance}
+          maxDistance={config.visual.camera.controls.maxDistance}
+          minPolarAngle={config.visual.camera.controls.minPolarAngle}
+          maxPolarAngle={config.visual.camera.controls.maxPolarAngle}
         />
         
         {/* Lighting */}
-        <ambientLight intensity={0.5} />
-        <directionalLight position={[5, 5, 5]} intensity={1} />
-        <pointLight position={[-5, 5, -5]} intensity={0.5} color="#ff6ec7" />
+        <ambientLight 
+          intensity={config.visual.lighting.ambient.intensity} 
+          color={config.visual.lighting.ambient.color}
+        />
+        <directionalLight 
+          position={config.visual.lighting.directional.position} 
+          intensity={config.visual.lighting.directional.intensity}
+          color={config.visual.lighting.directional.color}
+        />
+        <pointLight 
+          position={config.visual.lighting.point.position} 
+          intensity={config.visual.lighting.point.intensity} 
+          color={config.visual.lighting.point.color}
+        />
         
         {/* Background */}
-        <color attach="background" args={['#1a0033']} />
+        <color attach="background" args={[config.visual.scene.backgroundColor]} />
         
         {/* Fog for depth */}
-        <fog attach="fog" args={['#1a0033', 10, 30]} />
+        <fog 
+          attach="fog" 
+          args={[
+            config.visual.scene.fog.color, 
+            config.visual.scene.fog.near, 
+            config.visual.scene.fog.far
+          ]} 
+        />
         
         {/* Animated Waifu */}
         <AnimatedWaifu modelId={modelId} animationState={animationState} isSpeaking={isSpeaking} />
         
         {/* Particle effects */}
-        <ParticleField />
+        {config.features.particles && <ParticleField />}
       </Canvas>
     </CanvasContainer>
   );
@@ -276,25 +287,30 @@ function WaifuCanvas({ modelId, animationState, isSpeaking }) {
 // Particle effects for ambiance
 function ParticleField() {
   const particles = useRef();
-  const particleCount = 100;
+  const particleCount = config.visual.particles.count;
   
   const positions = new Float32Array(particleCount * 3);
   const colors = new Float32Array(particleCount * 3);
   
   for (let i = 0; i < particleCount; i++) {
-    positions[i * 3] = (Math.random() - 0.5) * 20;
-    positions[i * 3 + 1] = (Math.random() - 0.5) * 20;
-    positions[i * 3 + 2] = (Math.random() - 0.5) * 20;
+    const spread = config.visual.particles.spread;
+    positions[i * 3] = (Math.random() - 0.5) * spread;
+    positions[i * 3 + 1] = (Math.random() - 0.5) * spread;
+    positions[i * 3 + 2] = (Math.random() - 0.5) * spread;
     
-    colors[i * 3] = 1;
-    colors[i * 3 + 1] = Math.random() * 0.5 + 0.5;
-    colors[i * 3 + 2] = Math.random() * 0.5 + 0.7;
+    const [minR, minG, minB] = config.visual.particles.colors.min;
+    const [maxR, maxG, maxB] = config.visual.particles.colors.max;
+    
+    colors[i * 3] = minR + Math.random() * (maxR - minR);
+    colors[i * 3 + 1] = minG + Math.random() * (maxG - minG);
+    colors[i * 3 + 2] = minB + Math.random() * (maxB - minB);
   }
   
   useFrame((state) => {
     if (!particles.current) return;
-    particles.current.rotation.y += 0.001;
-    particles.current.rotation.x += 0.0005;
+    const rotSpeed = config.visual.particles.rotationSpeed;
+    particles.current.rotation.y += rotSpeed;
+    particles.current.rotation.x += rotSpeed * 0.5;
   });
   
   return (
@@ -313,7 +329,11 @@ function ParticleField() {
           itemSize={3}
         />
       </bufferGeometry>
-      <pointsMaterial size={0.05} vertexColors sizeAttenuation={false} />
+      <pointsMaterial 
+        size={config.visual.particles.size} 
+        vertexColors 
+        sizeAttenuation={false} 
+      />
     </points>
   );
 }

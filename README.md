@@ -95,11 +95,30 @@ The animation system supports:
 
 ## Configuration
 
+### Backend Configuration
 Edit `backend/.env` for:
 - vLLM API settings
 - Feature toggles
 - Security settings
 - Performance tuning
+
+### Frontend Configuration
+The frontend now has a centralized configuration system:
+- Main config: `frontend/src/config.js`
+- Local overrides: Create `frontend/src/config.local.js` (git-ignored)
+- See [FRONTEND_CONFIG.md](docs/FRONTEND_CONFIG.md) for detailed documentation
+
+Quick example - create `frontend/src/config.local.js`:
+```javascript
+export default {
+  api: {
+    baseUrl: 'http://192.168.1.100:8000'  // Use different backend
+  },
+  visual: {
+    particles: { count: 25 }  // Reduce particles for performance
+  }
+};
+```
 
 ## Development
 
@@ -123,9 +142,18 @@ This system is designed for adult interactions. Please ensure:
 - Privacy-conscious deployment
 - Responsible use of the platform
 
-## What's New (v1.1.0)
+## What's New (v1.2.0)
 
-### 🔊 Voice Synthesis Feature
+### 📋 Centralized Frontend Configuration
+- **Single Source of Truth**: All frontend parameters in one place
+- **Local Overrides**: Create `config.local.js` for custom settings
+- **Environment Aware**: Different settings for dev/production
+- **Easy Customization**: Tweak animations, colors, performance
+- **No More Hardcoding**: All values configurable
+
+See [FRONTEND_CONFIG.md](docs/FRONTEND_CONFIG.md) for details.
+
+### 🔊 Voice Synthesis Feature (v1.1.0)
 - **Emotion-Aware Speech**: Voice changes based on waifu's emotions
 - **Personality Voices**: Each waifu has unique voice characteristics
 - **Visual Feedback**: Waveform visualization and speaking animations

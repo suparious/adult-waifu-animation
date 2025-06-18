@@ -4,13 +4,14 @@ import WaifuCanvas from './components/WaifuCanvas';
 import ChatInterface from './components/ChatInterface';
 import ModelSelector from './components/ModelSelector';
 import VoiceSynthesis from './components/VoiceSynthesis';
+import config from './config';
 import './App.css';
 
 const AppContainer = styled.div`
   display: flex;
   height: 100vh;
-  background: linear-gradient(135deg, #1a0033 0%, #330066 100%);
-  color: white;
+  background: ${config.ui.colors.background.main};
+  color: ${config.ui.colors.text.primary};
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 `;
 
@@ -22,9 +23,9 @@ const AnimationSection = styled.div`
 `;
 
 const ChatSection = styled.div`
-  width: 400px;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(10px);
+  width: ${config.ui.layout.chatWidth}px;
+  background: ${config.ui.colors.background.overlay};
+  backdrop-filter: blur(${config.ui.animations.glassBlur}px);
   border-left: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   flex-direction: column;
@@ -39,14 +40,14 @@ const Header = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: linear-gradient(180deg, rgba(0,0,0,0.7) 0%, transparent 100%);
+  background: linear-gradient(180deg, ${config.ui.colors.background.glass} 0%, transparent 100%);
   z-index: 10;
 `;
 
 const Title = styled.h1`
   margin: 0;
   font-size: 24px;
-  background: linear-gradient(45deg, #ff6ec7, #ff9472);
+  background: linear-gradient(45deg, ${config.ui.colors.primary}, ${config.ui.colors.secondary});
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 `;
@@ -59,7 +60,7 @@ const TitleSection = styled.div`
 
 const SystemInfo = styled.div`
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.6);
+  color: ${config.ui.colors.text.muted};
   font-weight: normal;
   display: flex;
   gap: 8px;
@@ -72,16 +73,16 @@ const SystemInfo = styled.div`
   }
   
   .provider {
-    color: #ff9472;
+    color: ${config.ui.colors.secondary};
     font-weight: 500;
   }
   
   .model {
-    color: #ff6ec7;
+    color: ${config.ui.colors.primary};
   }
   
   .version {
-    color: #9f7aea;
+    color: ${config.ui.colors.tertiary};
     font-size: 11px;
     opacity: 0.8;
   }
@@ -110,41 +111,49 @@ function App() {
 
   // Fetch system info
   useEffect(() => {
-    const fetchSystemInfo = async () => {
-      try {
-        const response = await fetch('http://localhost:8000/api/system-info');
-        const data = await response.json();
-        setSystemInfo(data);
-      } catch (error) {
-        console.error('Failed to fetch system info:', error);
-      }
-    };
-    
-    fetchSystemInfo();
-    // Refresh system info every 60 seconds
-    const interval = setInterval(fetchSystemInfo, 60000);
-    
-    return () => clearInterval(interval);
+  const fetchSystemInfo = async () => {
+  try {
+  const response = await fetch(`${config.api.baseUrl}${config.api.endpoints.systemInfo}`);
+  const data = await response.json();
+  setSystemInfo(data);
+  } catch (error) {
+  console.error('Failed to fetch system info:', error);
+  }
+  };
+  
+  fetchSystemInfo();
+  // Refresh system info every 60 seconds
+  const interval = setInterval(fetchSystemInfo, 60000);
+  
+  return () => clearInterval(interval);
   }, []);
 
   const connectWebSocket = useCallback(() => {
-    const ws = new WebSocket(`ws://localhost:8000/ws/${clientIdRef.current}`);
+    const wsUrl = `${config.api.websocketUrl}${config.api.endpoints.websocket}/${clientIdRef.current}`;
+    const ws = new WebSocket(wsUrl);
     
     ws.onopen = () => {
-      console.log('Connected to server');
+      if (config.debug.logWebSocketMessages) {
+        console.log('Connected to server');
+      }
       setIsConnected(true);
     };
 
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
+      if (config.debug.logWebSocketMessages) {
+        console.log('WS Message:', data);
+      }
       handleServerMessage(data);
     };
 
     ws.onclose = () => {
-      console.log('Disconnected from server');
+      if (config.debug.logWebSocketMessages) {
+        console.log('Disconnected from server');
+      }
       setIsConnected(false);
-      // Attempt to reconnect after 3 seconds
-      setTimeout(connectWebSocket, 3000);
+      // Attempt to reconnect after configured delay
+      setTimeout(connectWebSocket, config.api.reconnectDelay);
     };
 
     ws.onerror = (error) => {
@@ -247,7 +256,7 @@ function App() {
 
   const fetchWaifuPersonality = async (modelId) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/models/${modelId}`);
+      const response = await fetch(`${config.api.baseUrl}${config.api.endpoints.models}/${modelId}`);
       const data = await response.json();
       if (!data.error) {
         setWaifuPersonality(data.personality);
