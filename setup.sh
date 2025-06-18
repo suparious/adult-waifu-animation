@@ -5,6 +5,10 @@
 echo "🎀 Setting up Waifu Animation Chat System..."
 echo ""
 
+# Backend setup
+echo "📦 Setting up backend..."
+cd backend
+
 # Check for pyenv and Python version
 if command -v pyenv &> /dev/null; then
     echo "✅ Detected pyenv"
@@ -36,17 +40,6 @@ if python3 --version 2>&1 | grep -q "3.1[2-9]\|3.[2-9]"; then
     fi
 fi
 
-# Check for Node.js
-if ! command -v node &> /dev/null; then
-    echo "❌ Node.js is required but not installed."
-    echo "Please install Node.js 16 or higher."
-    exit 1
-fi
-
-# Backend setup
-echo "📦 Setting up backend..."
-cd backend
-
 # Create virtual environment
 if [ ! -d "venv" ]; then
     python3 -m venv venv
@@ -68,6 +61,13 @@ echo ""
 # Frontend setup
 echo "📦 Setting up frontend..."
 cd ../frontend
+
+# Check for Node.js
+if ! command -v node &> /dev/null; then
+    echo "❌ Node.js is required but not installed."
+    echo "Please install Node.js 16 or higher."
+    exit 1
+fi
 
 # Clean install to avoid conflicts
 echo "🧹 Cleaning node_modules and lock files..."
