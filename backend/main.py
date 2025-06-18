@@ -17,9 +17,10 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 from waifu_manager import WaifuModelManager, WaifuProfile
+from llm_config import LLMClient, get_llm_config, reload_config
 
 # Load environment variables
-load_dotenv()
+load_dotenv(override=True)  # Override ensures .env is reloaded
 
 # Initialize paths
 BASE_DIR = Path(__file__).parent.parent
@@ -148,73 +149,41 @@ def generate_animation_sequence(emotion: str, intensity: float = 0.5) -> List[Di
     return sequence
 
 async def call_llm_api(prompt: str, model_personality: str, chat_history: List[Dict] = None) -> str:
-    """Call vLLM or compatible API for chat responses"""
+    """Call LLM API for chat responses (supports vLLM, Ollama, OpenAI)"""
     
-    # Get configuration from environment
-    vllm_url = os.getenv("VLLM_API_URL", "http://localhost:8001/v1/completions")
-    vllm_key = os.getenv("VLLM_API_KEY", "")
-    vllm_model = os.getenv("VLLM_MODEL", "")
+    # Reload config to pick up any .env changes
+    reload_config()
     
     # Build conversation context
     system_prompt = f"""You are {model_personality}
 
 IMPORTANT: You should embody this character fully. Express emotions through actions in *asterisks* and use casual, flirty language when appropriate. Keep responses engaging and playful."""
     
-    # Build conversation history
-    conversation = system_prompt + "\n\n"
-    
+    # Build conversation history for context
+    full_prompt = ""
     if chat_history:
         # Include last few messages for context
         recent_history = chat_history[-6:]  # Last 3 exchanges
         for msg in recent_history:
             if msg["role"] == "user":
-                conversation += f"User: {msg['content']}\n"
+                full_prompt += f"User: {msg['content']}\n"
             else:
-                conversation += f"Assistant: {msg['content']}\n"
+                full_prompt += f"Assistant: {msg['content']}\n"
     
-    conversation += f"User: {prompt}\nAssistant: "
+    full_prompt += f"User: {prompt}\nAssistant: "
     
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            headers = {}
-            if vllm_key and vllm_key != "your-api-key-here":
-                headers["Authorization"] = f"Bearer {vllm_key}"
-            
-            payload = {
-                "prompt": conversation,
-                "max_tokens": 200,
-                "temperature": 0.85,
-                "top_p": 0.9,
-                "stop": ["\nUser:", "\nHuman:", "\n\n"],
-                "presence_penalty": 0.6,
-                "frequency_penalty": 0.3
-            }
-            
-            # Add model if specified
-            if vllm_model:
-                payload["model"] = vllm_model
-            
-            response = await client.post(
-                vllm_url,
-                json=payload,
-                headers=headers
+        async with LLMClient() as llm:
+            response = await llm.generate(
+                prompt=full_prompt,
+                system_prompt=system_prompt,
+                stop=["\nUser:", "\nHuman:", "\n\n"]
             )
-            
-            if response.status_code == 200:
-                result = response.json()
-                if "choices" in result and len(result["choices"]) > 0:
-                    return result["choices"][0]["text"].strip()
-                else:
-                    return "*looks confused* I'm having trouble understanding the response format..."
-            else:
-                print(f"vLLM API error: {response.status_code} - {response.text}")
-                return "*looks worried* I'm having trouble connecting right now... Can you try again?"
+            return response
                 
-    except httpx.TimeoutException:
-        return "*sighs softly* The connection is taking too long... Let's try again?"
     except Exception as e:
-        print(f"Error calling vLLM API: {e}")
-        # Fallback to demo responses if vLLM fails
+        print(f"Error calling LLM API: {e}")
+        # Fallback to demo responses if LLM fails
         emotion = analyze_emotion(prompt)
         demo_responses = {
             "flirty": "*winks playfully* Even without my full power, I still find you interesting~",
