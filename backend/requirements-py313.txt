@@ -1,0 +1,20 @@
+# Python 3.13 compatible requirements (experimental)
+# Core dependencies - latest versions for 3.13 compatibility
+setuptools>=70.0.0
+wheel>=0.43.0
+
+# Application dependencies with 3.13 compatible versions
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+websockets>=12.0
+httpx>=0.27.0
+pydantic>=2.6.0
+python-multipart>=0.0.9
+python-dotenv>=1.0.1
+
+# Note: numpy might still have issues with 3.13
+# If numpy fails, comment it out - the app will still work
+# numpy>=1.26.4
+
+# Alternative: use numpy-quaternion which is more compatible
+# or just skip numpy entirely for basic functionality

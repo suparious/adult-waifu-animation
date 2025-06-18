@@ -1,0 +1,138 @@
+# Waifu Animation Chat System
+
+An interactive waifu chat system with real-time procedural animations, AI-powered conversations, and VTuber-like capabilities.
+
+## Features
+
+- 🎨 **Real-time 3D Animation**: Procedural animations using Three.js with emotion-based movements
+- 💬 **AI Chat Integration**: Ready for vLLM or OpenAI-compatible API integration
+- 🎭 **Multiple Waifu Models**: Easily extensible system for adding new characters
+- 🌟 **Emotion Detection**: Automatic emotion analysis and corresponding animations
+- 💕 **Progressive Interaction**: Affection system that unlocks new animations
+- 🎪 **Physics Simulation**: Natural hair and clothing movement
+- 🔊 **Voice Synthesis Ready**: Prepared for Web Speech API integration
+
+## Requirements
+
+- **Python 3.11** (recommended) - See [PYTHON_VERSION_GUIDE.md](PYTHON_VERSION_GUIDE.md)
+- **Node.js 16+**
+- **pyenv** (recommended for Python version management)
+
+## Quick Start
+
+1. **Setup the environment:**
+   ```bash
+   chmod +x *.sh
+   ./setup.sh
+   ```
+
+2. **Configure vLLM API:**
+   Edit `backend/.env` to add your vLLM API endpoint:
+   ```env
+   VLLM_API_URL=http://your-server:8081/v1/completions
+   VLLM_MODEL=your-model-name
+   ```
+
+3. **Add your waifu images:**
+   - Place PNG images in `frontend/public/models/`
+   - Name them `luna.png` and `sakura.png`
+   - See [IMAGE_SETUP_GUIDE.md](IMAGE_SETUP_GUIDE.md) for details
+
+4. **Run the application:**
+   ```bash
+   ./run.sh
+   ```
+
+5. **Access the application:**
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:8000
+
+## Architecture
+
+### Backend (FastAPI)
+- WebSocket chat server
+- Emotion detection system
+- Animation state management
+- vLLM/OpenAI API integration
+- Model configuration management
+
+### Frontend (React + Three.js)
+- 3D waifu rendering with procedural animation
+- Real-time chat interface
+- Model selection system
+- WebSocket communication
+- Responsive animations based on emotions
+
+## Adding Waifu Images & Models
+
+### Quick Image Setup
+1. Add your images to `frontend/public/models/`
+2. Name them to match personas (e.g., `luna.png`, `sakura.png`)
+3. Images should be 1024x2048 PNG format (portrait orientation)
+4. System automatically detects and uses them
+
+### Full Setup Guide
+See [IMAGE_SETUP_GUIDE.md](IMAGE_SETUP_GUIDE.md) for:
+- Detailed image requirements
+- Custom persona creation
+- Troubleshooting tips
+- Advanced configuration
+
+## Animation System
+
+The animation system supports:
+- Idle animations (breathing, swaying, blinking)
+- Emotion-based animations (happy, shy, flirty, etc.)
+- Physics simulation for hair and clothing
+- Smooth transitions between states
+- Customizable intensity and timing
+
+## API Endpoints
+
+- `GET /api/models` - List available models
+- `GET /api/models/{model_id}` - Get model details
+- `WebSocket /ws/{client_id}` - Real-time chat connection
+
+## Configuration
+
+Edit `backend/.env` for:
+- vLLM API settings
+- Feature toggles
+- Security settings
+- Performance tuning
+
+## Development
+
+### Backend Development
+```bash
+cd backend
+source venv/bin/activate
+python main.py
+```
+
+### Frontend Development
+```bash
+cd frontend
+npm start
+```
+
+## NSFW Content Notice
+
+This system is designed for adult interactions. Please ensure:
+- Appropriate age verification
+- Privacy-conscious deployment
+- Responsible use of the platform
+
+## Future Enhancements
+
+- [ ] Live2D integration for more advanced animations
+- [ ] Voice synthesis and lip-sync
+- [ ] Advanced physics simulation
+- [ ] Multi-language support
+- [ ] Custom model import system
+- [ ] Gesture recognition
+- [ ] VR/AR support
+
+## License
+
+Private use only. Not for redistribution.

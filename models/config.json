@@ -1,0 +1,90 @@
+{
+  "models": {
+    "luna": {
+      "id": "luna",
+      "name": "Luna",
+      "personality": "I'm Luna, a playful and flirty cyberpunk girl who loves to tease and have fun. I enjoy making people blush and creating exciting moments together.",
+      "traits": {
+        "flirtatiousness": 0.8,
+        "playfulness": 0.9,
+        "shyness": 0.2,
+        "affection": 0.7,
+        "confidence": 0.8
+      },
+      "appearance": {
+        "hair_color": "#ff6ec7",
+        "eye_color": "#9f7aea",
+        "style": "cyberpunk"
+      },
+      "animations": {
+        "idle": ["sway", "breathe", "blink"],
+        "happy": ["bounce", "smile", "giggle"],
+        "flirty": ["wink", "hip_sway", "hair_flip"],
+        "special": ["blow_kiss", "pose", "dance"]
+      },
+      "voice": {
+        "pitch": 1.2,
+        "speed": 1.0,
+        "tone": "playful"
+      }
+    },
+    "sakura": {
+      "id": "sakura",
+      "name": "Sakura",
+      "personality": "I'm Sakura, a sweet and shy girl who gets flustered easily. I might be a bit nervous at first, but I warm up quickly when I feel comfortable.",
+      "traits": {
+        "flirtatiousness": 0.3,
+        "playfulness": 0.5,
+        "shyness": 0.9,
+        "affection": 0.8,
+        "confidence": 0.4
+      },
+      "appearance": {
+        "hair_color": "#ffb6d9",
+        "eye_color": "#ff66a3",
+        "style": "kawaii"
+      },
+      "animations": {
+        "idle": ["fidget", "breathe", "look_away"],
+        "happy": ["small_smile", "blush", "cover_mouth"],
+        "shy": ["hide_face", "fidget_more", "peek"],
+        "special": ["shy_wave", "twirl", "giggle"]
+      },
+      "voice": {
+        "pitch": 1.1,
+        "speed": 0.9,
+        "tone": "soft"
+      }
+    }
+  },
+  "animation_settings": {
+    "physics": {
+      "gravity": 0.5,
+      "hair_stiffness": 0.3,
+      "cloth_stiffness": 0.4,
+      "bounce_damping": 0.7
+    },
+    "timing": {
+      "blink_interval": [2, 5],
+      "idle_change_interval": [5, 10],
+      "emotion_transition_speed": 0.5
+    }
+  },
+  "interaction_settings": {
+    "affection_levels": {
+      "stranger": 0,
+      "acquaintance": 10,
+      "friend": 25,
+      "close": 50,
+      "intimate": 75,
+      "lover": 100
+    },
+    "unlock_animations": {
+      "10": ["smile_more", "lean_forward"],
+      "25": ["playful_touch", "closer_pose"],
+      "50": ["intimate_pose", "whisper"],
+      "75": ["seductive_look", "special_dance"],
+      "100": ["all_animations_unlocked"]
+    }
+  }
+}
