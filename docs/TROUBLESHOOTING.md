@@ -105,9 +105,31 @@ Add to React app:
 console.log('WebSocket state:', wsRef.current?.readyState);
 ```
 
+## Voice Synthesis Issues
+
+#### No voice output
+**Check**:
+1. Browser supports Web Speech API (Chrome/Edge work best)
+2. System volume is not muted
+3. Voice toggle is ON (bottom right)
+4. Check browser console for speech synthesis errors
+
+#### Wrong voice or accent
+**Try**:
+1. Install more system voices
+2. Different browser (Chrome has more voices)
+3. Check available voices: `speechSynthesis.getVoices()` in console
+
+#### Voice cuts off mid-sentence
+**Fix**:
+1. Shorter responses in prompts
+2. Increase max_tokens in backend
+3. Browser limitation - some browsers limit speech length
+
 ## Still Having Issues?
 
 1. Check all logs in both terminals
 2. Look for error messages in browser console
 3. Verify all dependencies installed correctly
 4. Make sure ports 3000 and 8000 are free
+5. Run `./test-voice-synthesis.py` to test emotion detection

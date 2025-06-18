@@ -25,7 +25,7 @@ const LoadingOverlay = styled.div`
 `;
 
 // Animated Waifu Mesh Component
-function AnimatedWaifu({ modelId, animationState }) {
+function AnimatedWaifu({ modelId, animationState, isSpeaking }) {
   const meshRef = useRef();
   const [texture, setTexture] = useState(null);
   const [modelData, setModelData] = useState(null);
@@ -158,6 +158,12 @@ function AnimatedWaifu({ modelId, animationState }) {
         animParams.current.bounceSpeed = 0;
         animParams.current.bounceIntensity = 0;
     }
+
+    // Add speaking animation
+    if (isSpeaking) {
+      animParams.current.breathingSpeed *= 1.3;
+      animParams.current.breathingIntensity *= 1.2;
+    }
   }, [animationState]);
 
   // Animation loop
@@ -185,6 +191,13 @@ function AnimatedWaifu({ modelId, animationState }) {
     
     // Subtle idle animation
     mesh.rotation.y = Math.sin(time * 0.3) * 0.05;
+    
+    // Speaking animation - subtle head movement
+    if (isSpeaking) {
+      const speakBob = Math.sin(time * 8) * 0.01;
+      mesh.position.y += speakBob;
+      mesh.rotation.x = Math.sin(time * 6) * 0.02;
+    }
   });
 
   // Create geometry with bones for more complex animation
@@ -219,14 +232,14 @@ function AnimatedWaifu({ modelId, animationState }) {
         transparent
         side={THREE.DoubleSide}
         emissive="#ff6ec7"
-        emissiveIntensity={0.1}
+        emissiveIntensity={isSpeaking ? 0.2 : 0.1}
       />
     </mesh>
   );
 }
 
 // Main Canvas Component
-function WaifuCanvas({ modelId, animationState }) {
+function WaifuCanvas({ modelId, animationState, isSpeaking }) {
   return (
     <CanvasContainer>
       <Canvas>
@@ -251,7 +264,7 @@ function WaifuCanvas({ modelId, animationState }) {
         <fog attach="fog" args={['#1a0033', 10, 30]} />
         
         {/* Animated Waifu */}
-        <AnimatedWaifu modelId={modelId} animationState={animationState} />
+        <AnimatedWaifu modelId={modelId} animationState={animationState} isSpeaking={isSpeaking} />
         
         {/* Particle effects */}
         <ParticleField />

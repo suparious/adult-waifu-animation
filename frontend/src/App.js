@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import WaifuCanvas from './components/WaifuCanvas';
 import ChatInterface from './components/ChatInterface';
 import ModelSelector from './components/ModelSelector';
+import VoiceSynthesis from './components/VoiceSynthesis';
 import './App.css';
 
 const AppContainer = styled.div`
@@ -100,6 +101,10 @@ function App() {
   const [isConnected, setIsConnected] = useState(false);
   const [messages, setMessages] = useState([]);
   const [systemInfo, setSystemInfo] = useState(null);
+  const [lastWaifuMessage, setLastWaifuMessage] = useState(null);
+  const [currentEmotion, setCurrentEmotion] = useState('neutral');
+  const [waifuPersonality, setWaifuPersonality] = useState('');
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const wsRef = useRef(null);
   const clientIdRef = useRef(`client-${Date.now()}`);
 
@@ -168,12 +173,15 @@ function App() {
       
       case 'response':
         // Add AI response to messages
-        setMessages(prev => [...prev, {
+        const waifuMessage = {
           sender: 'waifu',
           text: data.message,
           timestamp: new Date(data.timestamp),
           emotion: data.emotion
-        }]);
+        };
+        setMessages(prev => [...prev, waifuMessage]);
+        setLastWaifuMessage(waifuMessage);
+        setCurrentEmotion(data.emotion || 'neutral');
         
         // Update animation state
         if (data.animation) {
@@ -185,6 +193,8 @@ function App() {
       
       case 'model_changed':
         setSelectedModel(data.model);
+        // Fetch model personality when changed
+        fetchWaifuPersonality(data.model);
         break;
       
       case 'state':
@@ -235,6 +245,23 @@ function App() {
     }
   };
 
+  const fetchWaifuPersonality = async (modelId) => {
+    try {
+      const response = await fetch(`http://localhost:8000/api/models/${modelId}`);
+      const data = await response.json();
+      if (!data.error) {
+        setWaifuPersonality(data.personality);
+      }
+    } catch (error) {
+      console.error('Failed to fetch waifu personality:', error);
+    }
+  };
+
+  // Fetch initial waifu personality
+  useEffect(() => {
+    fetchWaifuPersonality(selectedModel);
+  }, [selectedModel]);
+
   return (
     <AppContainer>
       <AnimationSection>
@@ -269,6 +296,14 @@ function App() {
         <WaifuCanvas 
           modelId={selectedModel}
           animationState={animationState}
+          isSpeaking={isSpeaking}
+        />
+        <VoiceSynthesis
+          message={lastWaifuMessage}
+          waifuId={selectedModel}
+          emotion={currentEmotion}
+          waifuPersonality={waifuPersonality}
+          onSpeakingChange={setIsSpeaking}
         />
       </AnimationSection>
       <ChatSection>

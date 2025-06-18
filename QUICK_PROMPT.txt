@@ -1,0 +1,22 @@
+# Quick Development Prompt for Claude
+
+I have a working waifu animation chat system at `/home/shaun/scratch-space/adult-waifu-animation/` that needs the next feature implemented.
+
+**Current State**: Working chat with vLLM, procedural animations, emotion detection, and voice synthesis (just added).
+
+**Tech Stack**: FastAPI + React/Three.js, Python 3.11, yarn for frontend
+
+**Next Priority Features** (pick one):
+1. **Affection/Progression System** - Track relationship 0-100, unlock content
+2. **State Persistence** - Save chats and progress  
+3. **Better Animations** - More variations or Live2D
+4. **Outfit System** - Customizable appearance
+5. **Advanced Voice** - ElevenLabs integration
+
+Please:
+1. First check the project structure and existing code
+2. Read `docs/PRD.md` for full context
+3. Review `docs/NEXT_STEPS.md` for detailed roadmap
+4. Implement the feature you think would have maximum impact
+
+This is an adult-oriented (NSFW) app. The goal is to create engaging, progressively intimate interactions.

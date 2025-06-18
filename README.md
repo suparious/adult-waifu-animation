@@ -10,7 +10,7 @@ An interactive waifu chat system with real-time procedural animations, AI-powere
 - 🌟 **Emotion Detection**: Automatic emotion analysis and corresponding animations
 - 💕 **Progressive Interaction**: Affection system that unlocks new animations
 - 🎪 **Physics Simulation**: Natural hair and clothing movement
-- 🔊 **Voice Synthesis Ready**: Prepared for Web Speech API integration
+- 🔊 **Voice Synthesis**: Emotion-aware text-to-speech with visual feedback (NEW!)
 
 ## Requirements
 
@@ -123,10 +123,25 @@ This system is designed for adult interactions. Please ensure:
 - Privacy-conscious deployment
 - Responsible use of the platform
 
+## What's New (v1.1.0)
+
+### 🔊 Voice Synthesis Feature
+- **Emotion-Aware Speech**: Voice changes based on waifu's emotions
+- **Personality Voices**: Each waifu has unique voice characteristics
+- **Visual Feedback**: Waveform visualization and speaking animations
+- **User Controls**: Volume adjustment and on/off toggle
+- **Browser Native**: Uses Web Speech API (no external dependencies)
+
+See [VOICE_SYNTHESIS.md](docs/VOICE_SYNTHESIS.md) for details.
+
 ## Future Enhancements
 
+- [x] Voice synthesis with emotion awareness
 - [ ] Live2D integration for more advanced animations
-- [ ] Voice synthesis and lip-sync
+- [ ] Advanced voice providers (ElevenLabs, Azure)
+- [ ] Affection/progression system with unlockables
+- [ ] Outfit/appearance customization
+- [ ] State persistence (save conversations)
 - [ ] Advanced physics simulation
 - [ ] Multi-language support
 - [ ] Custom model import system

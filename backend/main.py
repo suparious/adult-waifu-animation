@@ -264,9 +264,11 @@ async def get_system_info():
             "max_tokens": config.max_tokens
         },
         "features": {
-            "voice_synthesis": os.getenv("ENABLE_VOICE_SYNTHESIS", "false").lower() == "true",
+            "voice_synthesis": os.getenv("ENABLE_VOICE_SYNTHESIS", "true").lower() == "true",
+            "voice_synthesis_provider": os.getenv("VOICE_SYNTHESIS_PROVIDER", "webspeech"),
             "advanced_physics": os.getenv("ENABLE_ADVANCED_PHYSICS", "true").lower() == "true",
-            "max_affection_level": int(os.getenv("MAX_AFFECTION_LEVEL", "100"))
+            "max_affection_level": int(os.getenv("MAX_AFFECTION_LEVEL", "100")),
+            "nsfw_enabled": os.getenv("NSFW_ENABLED", "true").lower() == "true"
         },
         "timestamp": datetime.now().isoformat()
     }
