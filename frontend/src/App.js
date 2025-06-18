@@ -50,6 +50,46 @@ const Title = styled.h1`
   -webkit-text-fill-color: transparent;
 `;
 
+const TitleSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+`;
+
+const SystemInfo = styled.div`
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: normal;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  
+  span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  
+  .provider {
+    color: #ff9472;
+    font-weight: 500;
+  }
+  
+  .model {
+    color: #ff6ec7;
+  }
+  
+  .version {
+    color: #9f7aea;
+    font-size: 11px;
+    opacity: 0.8;
+  }
+  
+  .separator {
+    opacity: 0.3;
+  }
+`;
+
 function App() {
   const [selectedModel, setSelectedModel] = useState('luna');
   const [animationState, setAnimationState] = useState({
@@ -59,8 +99,28 @@ function App() {
   });
   const [isConnected, setIsConnected] = useState(false);
   const [messages, setMessages] = useState([]);
+  const [systemInfo, setSystemInfo] = useState(null);
   const wsRef = useRef(null);
   const clientIdRef = useRef(`client-${Date.now()}`);
+
+  // Fetch system info
+  useEffect(() => {
+    const fetchSystemInfo = async () => {
+      try {
+        const response = await fetch('http://localhost:8000/api/system-info');
+        const data = await response.json();
+        setSystemInfo(data);
+      } catch (error) {
+        console.error('Failed to fetch system info:', error);
+      }
+    };
+    
+    fetchSystemInfo();
+    // Refresh system info every 60 seconds
+    const interval = setInterval(fetchSystemInfo, 60000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   const connectWebSocket = useCallback(() => {
     const ws = new WebSocket(`ws://localhost:8000/ws/${clientIdRef.current}`);
@@ -179,7 +239,28 @@ function App() {
     <AppContainer>
       <AnimationSection>
         <Header>
-          <Title>Waifu Animation Chat</Title>
+          <TitleSection>
+            <Title>Waifu Animation Chat</Title>
+            {systemInfo ? (
+              <SystemInfo>
+                <span className="provider">
+                  🤖 {systemInfo.llm.provider}
+                </span>
+                <span className="separator">•</span>
+                <span className="model">
+                  {systemInfo.llm.model_display}
+                </span>
+                <span className="separator">•</span>
+                <span className="version">
+                  v{systemInfo.version}
+                </span>
+              </SystemInfo>
+            ) : (
+              <SystemInfo>
+                <span style={{ opacity: 0.5 }}>Loading system info...</span>
+              </SystemInfo>
+            )}
+          </TitleSection>
           <ModelSelector 
             selectedModel={selectedModel}
             onModelChange={changeModel}

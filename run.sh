@@ -68,7 +68,6 @@ echo "✨ Waifu Animation Chat is running!"
 echo "Frontend: http://localhost:3000"
 echo "Backend API: http://localhost:8000"
 echo ""
-echo "To test LLM connection: ./test-llm.py"
 echo "Press Ctrl+C to stop all servers"
 echo ""
 

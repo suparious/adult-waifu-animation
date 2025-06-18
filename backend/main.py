@@ -17,10 +17,13 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 from waifu_manager import WaifuModelManager, WaifuProfile
-from llm_config import LLMClient, get_llm_config, reload_config
+from llm_config import LLMClient, LLMProvider, get_llm_config, reload_config
 
 # Load environment variables
 load_dotenv(override=True)  # Override ensures .env is reloaded
+
+# Application version
+APP_VERSION = "1.0.0-beta"
 
 # Initialize paths
 BASE_DIR = Path(__file__).parent.parent
@@ -195,7 +198,78 @@ IMPORTANT: You should embody this character fully. Express emotions through acti
 
 @app.get("/")
 async def root():
-    return {"message": "Waifu Animation Chat API", "version": "1.0"}
+    return {"message": "Waifu Animation Chat API", "version": APP_VERSION}
+
+@app.get("/api/system-info")
+async def get_system_info():
+    """Get system information including LLM configuration"""
+    config = get_llm_config()
+    
+    # Get friendly model name
+    model_display = config.model or "Default Model"
+    
+    # Handle OpenAI model names
+    if config.provider == LLMProvider.OPENAI:
+        openai_models = {
+            "gpt-4.1-mini": "GPT-4.1 Mini",
+            "gpt-4.1-nano": "GPT-4.1 Nano",
+            "gpt-4-turbo": "GPT-4 Turbo",
+            "gpt-4": "GPT-4",
+            "gpt-3.5-turbo": "GPT-3.5 Turbo",
+            "o1-mini": "O1 Mini",
+            "o3-mini": "O3 Mini"
+        }
+        model_display = openai_models.get(config.model, config.model)
+    
+    # Handle Ollama model names
+    elif config.provider == LLMProvider.OLLAMA:
+        if ":" in model_display:
+            # Remove version tag for display
+            model_display = model_display.split(":")[0]
+        if "/" in model_display:
+            # Extract model name from path
+            parts = model_display.split("/")
+            model_display = parts[-1].replace("-", " ").title()
+    
+    # Handle vLLM/HuggingFace style model names
+    elif "/" in model_display:
+        # Simplify model names like "solidrust/dolphin-2.9.2-qwen2-7b-AWQ" to "Dolphin 2.9.2"
+        parts = model_display.split("/")
+        if len(parts) > 1:
+            model_name = parts[-1]
+            # Extract main model name
+            if "-" in model_name:
+                model_parts = model_name.split("-")
+                if "dolphin" in model_name.lower():
+                    model_display = "Dolphin " + model_parts[1]
+                elif "llama" in model_name.lower():
+                    model_display = "LLaMA " + model_parts[1] if len(model_parts) > 1 else "LLaMA"
+                elif "mistral" in model_name.lower():
+                    model_display = "Mistral " + model_parts[1] if len(model_parts) > 1 else "Mistral"
+                elif "qwen" in model_name.lower():
+                    model_display = "Qwen " + model_parts[1] if len(model_parts) > 1 else "Qwen"
+                elif len(model_parts) > 2:
+                    model_display = f"{model_parts[0].title()} {model_parts[1]}"
+                else:
+                    model_display = model_parts[0].title()
+    
+    return {
+        "version": APP_VERSION,
+        "llm": {
+            "provider": config.provider.value.upper(),
+            "model": config.model,
+            "model_display": model_display,
+            "api_url": config.api_url.split("/v1")[0] if "/v1" in config.api_url else config.api_url,
+            "temperature": config.temperature,
+            "max_tokens": config.max_tokens
+        },
+        "features": {
+            "voice_synthesis": os.getenv("ENABLE_VOICE_SYNTHESIS", "false").lower() == "true",
+            "advanced_physics": os.getenv("ENABLE_ADVANCED_PHYSICS", "true").lower() == "true",
+            "max_affection_level": int(os.getenv("MAX_AFFECTION_LEVEL", "100"))
+        },
+        "timestamp": datetime.now().isoformat()
+    }
 
 @app.get("/api/models")
 async def get_models():
