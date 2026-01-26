@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: waifu-frontend
+  labels:
+    app: waifu-animation
+    component: frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: waifu-animation
+      component: frontend
+  template:
+    metadata:
+      labels:
+        app: waifu-animation
+        component: frontend
+    spec:
+      containers:
+      - name: frontend
+        image: poseidon.hq.solidrust.net:30008/waifu-animation/frontend:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+          name: http
+          protocol: TCP
+        env:
+        - name: REACT_APP_BACKEND_URL
+          value: "http://waifu-backend:8000"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5

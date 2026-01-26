@@ -1,0 +1,115 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: waifu-backend
+  labels:
+    app: waifu-animation
+    component: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: waifu-animation
+      component: backend
+  template:
+    metadata:
+      labels:
+        app: waifu-animation
+        component: backend
+    spec:
+      containers:
+      - name: backend
+        image: poseidon.hq.solidrust.net:30008/waifu-animation/backend:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+          name: http
+          protocol: TCP
+        env:
+        - name: HOST
+          value: "0.0.0.0"
+        - name: PORT
+          value: "8000"
+        # LLM config from secret/configmap
+        - name: LLM_PROVIDER
+          valueFrom:
+            configMapKeyRef:
+              name: waifu-config
+              key: llm-provider
+        - name: LLM_API_URL
+          valueFrom:
+            configMapKeyRef:
+              name: waifu-config
+              key: llm-api-url
+        - name: LLM_MODEL
+          valueFrom:
+            configMapKeyRef:
+              name: waifu-config
+              key: llm-model
+        - name: LLM_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: waifu-secrets
+              key: llm-api-key
+        - name: LLM_TEMPERATURE
+          value: "0.85"
+        - name: LLM_MAX_TOKENS
+          value: "200"
+        - name: LLM_TIMEOUT
+          value: "30.0"
+        # Feature flags
+        - name: ENABLE_VOICE_SYNTHESIS
+          value: "true"
+        - name: ENABLE_ADVANCED_PHYSICS
+          value: "true"
+        - name: MAX_AFFECTION_LEVEL
+          value: "100"
+        - name: NSFW_ENABLED
+          value: "true"
+        # Database location
+        - name: DB_PATH
+          value: "/data/waifu_chat.db"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /api/system-info
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        volumeMounts:
+        - name: data
+          mountPath: /data
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: waifu-data
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: waifu-data
+  labels:
+    app: waifu-animation
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: nfs-client  # Adjust for your cluster

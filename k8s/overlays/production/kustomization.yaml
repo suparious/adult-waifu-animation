@@ -1,0 +1,29 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: waifu-animation
+
+bases:
+- ../../base
+
+resources:
+- configmap.yaml
+- sealed-secret-template.yaml
+- httproute.yaml
+- poddisruptionbudget.yaml
+
+commonLabels:
+  environment: production
+  managed-by: kustomize
+
+images:
+- name: poseidon.hq.solidrust.net:30008/waifu-animation/backend
+  newTag: latest  # Use git SHA or semantic version in production
+- name: poseidon.hq.solidrust.net:30008/waifu-animation/frontend
+  newTag: latest
+
+replicas:
+- name: waifu-backend
+  count: 2
+- name: waifu-frontend
+  count: 2

@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- backend
+- frontend
+
+namespace: waifu-animation
+
+commonLabels:
+  app.kubernetes.io/name: waifu-animation
+  app.kubernetes.io/version: "1.1.0"

@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: waifu-config
+data:
+  # LLM Configuration - Artemis Gateway
+  llm-provider: "openai"
+  llm-api-url: "https://artemis.hq.solidrust.net/v1/chat/completions"
+  llm-model: "vllm-primary"

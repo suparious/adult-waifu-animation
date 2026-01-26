@@ -1,0 +1,56 @@
+# Gateway API HTTPRoute for external access
+# Requires Gateway API CRDs and a configured Gateway
+
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: waifu-animation
+spec:
+  parentRefs:
+  - name: cluster-gateway  # Adjust to your gateway name
+    namespace: gateway-system
+  hostnames:
+  - "waifu.hq.solidrust.net"  # Adjust to your domain
+  rules:
+  # Frontend routes
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+      headers:
+      - type: Exact
+        name: Upgrade
+        value: websocket
+        invert: true  # Not a WebSocket request
+    backendRefs:
+    - name: waifu-frontend
+      port: 80
+  
+  # Backend API routes (non-WebSocket)
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /api
+      headers:
+      - type: Exact
+        name: Upgrade
+        value: websocket
+        invert: true
+    backendRefs:
+    - name: waifu-backend
+      port: 8000
+  
+  # WebSocket route - special handling
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /ws
+      headers:
+      - type: Exact
+        name: Upgrade
+        value: websocket
+    backendRefs:
+    - name: waifu-backend
+      port: 8000
+    timeouts:
+      request: 3600s  # 1 hour for WebSocket connections
