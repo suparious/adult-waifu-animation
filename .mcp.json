@@ -1,0 +1,50 @@
+{
+  "mcpServers": {
+    "time": {
+      "command": "uvx",
+      "args": ["mcp-server-time"]
+    },
+    "calculator": {
+      "command": "uvx",
+      "args": ["mcp-server-calculator"]
+    },
+    "kubernetes": {
+      "command": "npx",
+      "args": ["-y", "mcp-server-kubernetes"]
+    },
+    "github": {
+      "command": "/Users/shaun/bin/github-mcp-wrapper",
+      "args": []
+    },
+    "gitea": {
+      "command": "/Users/shaun/bin/gitea-mcp",
+      "args": ["-t", "stdio", "-host", "https://poseidon.hq.solidrust.net:30008", "-token", "${GITEA_TOKEN}"]
+    },
+    "stripe": {
+      "command": "npx",
+      "args": ["-y", "@stripe/mcp", "--tools=all"],
+      "env": {
+        "STRIPE_SECRET_KEY": "${STRIPE_SECRET_KEY}"
+      }
+    },
+    "aws": {
+      "command": "uvx",
+      "args": ["awslabs.aws-api-mcp-server@latest"],
+      "env": {
+        "AWS_REGION": "us-west-2"
+      }
+    },
+    "discord": {
+      "command": "/Users/shaun/bin/discord-mcp-wrapper",
+      "args": []
+    },
+    "postgres": {
+      "command": "/Users/shaun/bin/postgres-mcp-wrapper",
+      "args": []
+    },
+    "redis": {
+      "command": "/Users/shaun/bin/redis-mcp-wrapper",
+      "args": []
+    }
+  }
+}

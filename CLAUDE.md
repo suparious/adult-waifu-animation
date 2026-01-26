@@ -6,6 +6,24 @@ emotion-based animations, and relationship progression.
 
 **Personal Project**: This is a fun personal project exploring Three.js, WebSockets, and AI integration.
 
+## MCP Tool Usage (ToolSearch Required)
+
+With deferred tool loading enabled, MCP tools DO NOT EXIST until loaded via ToolSearch.
+
+**You MUST call ToolSearch FIRST before using ANY MCP tool.**
+
+```
+WRONG: Try to call mcp__aws__call_aws directly -> "No such tool available" error
+RIGHT: ToolSearch("select:mcp__aws__call_aws") -> tool loads -> call mcp__aws__call_aws
+```
+
+**Pattern:**
+1. `ToolSearch(query="select:mcp__gitea__create_issue")` - loads the tool
+2. Call the tool - now it exists
+
+If you don't know the exact name, use keyword search: `ToolSearch(query="+gitea issue")`
+
+Available MCP servers: time, calculator, kubernetes, github, gitea, stripe, aws, discord, postgres, redis
 ---
 
 ## Architecture
