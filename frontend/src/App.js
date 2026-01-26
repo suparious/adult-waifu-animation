@@ -5,6 +5,8 @@ import ChatInterface from './components/ChatInterface';
 import ModelSelector from './components/ModelSelector';
 import VoiceSynthesis from './components/VoiceSynthesis';
 import AffectionMeter from './components/AffectionMeter';
+import AuthPanel from './components/AuthPanel';
+import { useAuth } from './hooks/useAuth';
 import config from './config';
 import './App.css';
 
@@ -112,7 +114,56 @@ const SystemInfo = styled.div`
   }
 `;
 
+const UserBadge = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 8px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  
+  .name {
+    color: ${config.ui.colors.text.primary};
+    font-weight: 500;
+  }
+  
+  .tier {
+    color: ${config.ui.colors.secondary};
+    text-transform: uppercase;
+    font-size: 10px;
+  }
+`;
+
+const LogoutButton = styled.button`
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: ${config.ui.colors.text.secondary};
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all ${config.ui.animations.transitionDuration};
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+`;
+
 function App() {
+  const { 
+    session, 
+    isAuthenticated, 
+    isLoading: authLoading,
+    logout,
+    getUserName,
+    isGuest,
+    getSessionToken,
+    setSession
+  } = useAuth();
+  
+  const [showAuthPanel, setShowAuthPanel] = useState(false);
   const [selectedModel, setSelectedModel] = useState('luna');
   const [animationState, setAnimationState] = useState({
     emotion: 'neutral',
@@ -131,23 +182,32 @@ function App() {
   const wsRef = useRef(null);
   const clientIdRef = useRef(`client-${Date.now()}`);
 
+  // Show auth panel if not authenticated
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      setShowAuthPanel(true);
+    } else {
+      setShowAuthPanel(false);
+    }
+  }, [authLoading, isAuthenticated]);
+
   // Fetch system info
   useEffect(() => {
-  const fetchSystemInfo = async () => {
-  try {
-  const response = await fetch(`${config.api.baseUrl}${config.api.endpoints.systemInfo}`);
-  const data = await response.json();
-  setSystemInfo(data);
-  } catch (error) {
-  console.error('Failed to fetch system info:', error);
-  }
-  };
-  
-  fetchSystemInfo();
-  // Refresh system info every 60 seconds
-  const interval = setInterval(fetchSystemInfo, 60000);
-  
-  return () => clearInterval(interval);
+    const fetchSystemInfo = async () => {
+      try {
+        const response = await fetch(`${config.api.baseUrl}${config.api.endpoints.systemInfo}`);
+        const data = await response.json();
+        setSystemInfo(data);
+      } catch (error) {
+        console.error('Failed to fetch system info:', error);
+      }
+    };
+    
+    fetchSystemInfo();
+    // Refresh system info every 60 seconds
+    const interval = setInterval(fetchSystemInfo, 60000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const connectWebSocket = useCallback(() => {
@@ -159,6 +219,15 @@ function App() {
         console.log('Connected to server');
       }
       setIsConnected(true);
+      
+      // Authenticate the WebSocket connection if we have a session
+      const sessionToken = getSessionToken();
+      if (sessionToken) {
+        ws.send(JSON.stringify({
+          type: 'authenticate',
+          session_token: sessionToken
+        }));
+      }
     };
 
     ws.onmessage = (event) => {
@@ -183,23 +252,33 @@ function App() {
     };
 
     wsRef.current = ws;
-  }, []);
+  }, [getSessionToken]);
 
   useEffect(() => {
-    // Connect to WebSocket
-    connectWebSocket();
+    // Only connect if authenticated
+    if (isAuthenticated) {
+      connectWebSocket();
+    }
 
     return () => {
       if (wsRef.current) {
         wsRef.current.close();
       }
     };
-  }, [connectWebSocket]);
+  }, [connectWebSocket, isAuthenticated]);
 
   const handleServerMessage = (data) => {
     switch (data.type) {
       case 'connection':
         console.log('Connection established:', data.message);
+        break;
+      
+      case 'authenticated':
+        console.log('WebSocket authenticated:', data.user);
+        break;
+      
+      case 'auth_error':
+        console.error('WebSocket auth error:', data.message);
         break;
       
       case 'response':
@@ -305,10 +384,42 @@ function App() {
     // Future: Update available animations, outfits, etc.
   };
 
+  const handleAuthenticated = (sessionData) => {
+    setSession(sessionData);
+    setShowAuthPanel(false);
+  };
+
+  const handleGuestMode = (sessionData) => {
+    setSession(sessionData);
+    setShowAuthPanel(false);
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    setMessages([]);
+    setAffectionData(null);
+    if (wsRef.current) {
+      wsRef.current.close();
+    }
+  };
+
   // Fetch initial waifu personality
   useEffect(() => {
-    fetchWaifuPersonality(selectedModel);
-  }, [selectedModel]);
+    if (isAuthenticated) {
+      fetchWaifuPersonality(selectedModel);
+    }
+  }, [selectedModel, isAuthenticated]);
+
+  // Show auth panel if needed
+  if (showAuthPanel) {
+    return (
+      <AuthPanel
+        onAuthenticated={handleAuthenticated}
+        onGuestMode={handleGuestMode}
+        isVisible={true}
+      />
+    );
+  }
 
   return (
     <AppContainer>
@@ -320,13 +431,13 @@ function App() {
               {systemInfo ? (
                 <SystemInfo>
                   <span className="provider">
-                    🤖 {systemInfo.llm.provider}
+                    {systemInfo.llm.provider}
                   </span>
-                  <span className="separator">•</span>
+                  <span className="separator">|</span>
                   <span className="model">
                     {systemInfo.llm.model_display}
                   </span>
-                  <span className="separator">•</span>
+                  <span className="separator">|</span>
                   <span className="version">
                     v{systemInfo.version}
                   </span>
@@ -337,6 +448,20 @@ function App() {
                 </SystemInfo>
               )}
             </TitleSection>
+            {isAuthenticated && (
+              <UserBadge>
+                <div>
+                  <span className="name">{getUserName()}</span>
+                  {isGuest() && <span className="tier">Guest</span>}
+                  {!isGuest() && session?.user?.subscription_tier && (
+                    <span className="tier">{session.user.subscription_tier}</span>
+                  )}
+                </div>
+                <LogoutButton onClick={handleLogout}>
+                  Logout
+                </LogoutButton>
+              </UserBadge>
+            )}
           </HeaderTop>
           <ModelSelectorContainer>
             <SelectorLabel>Choose Your Waifu:</SelectorLabel>

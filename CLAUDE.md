@@ -17,6 +17,8 @@ emotion-based animations, and relationship progression.
 | **AI** | OpenAI-compatible API | Character responses via Artemis/vLLM/LiteLLM |
 | **TTS** | Browser Web Speech API | Voice synthesis (upgradeable to ElevenLabs) |
 | **Storage** | SQLite | Affection/progression persistence |
+| **Auth** | PAM Platform | API key validation and user management |
+| **Memory** | Embeddings + SQLite | Long-term conversation memory via semantic search |
 
 ---
 
@@ -24,11 +26,11 @@ emotion-based animations, and relationship progression.
 
 | Feature | Status | Issue | Notes |
 |---------|--------|-------|-------|
-| LLM via Artemis | ✅ Ready | #1 | X-API-Key header added, use `.env.artemis` |
-| PAM Auth | ❌ Not Started | #2 | Future: API key from PAM |
-| K8s Deployment | ❌ Not Started | #5 | Future: Kustomize manifests |
-| Persistent Storage | ❌ Not Started | #6 | Future: PostgreSQL migration |
-| Conversation Memory | ❌ Not Started | #7 | Future: Embeddings via data-layer |
+| LLM via Artemis | DONE | #1 | X-API-Key header added, use `.env.artemis` |
+| PAM Auth | DONE | #2 | API key validation, session management, login UI |
+| K8s Deployment | Not Started | #5 | Future: Kustomize manifests |
+| Persistent Storage | Not Started | #6 | Future: PostgreSQL migration |
+| Conversation Memory | DONE | #7 | Embeddings via Artemis, semantic retrieval |
 
 ---
 
@@ -42,6 +44,8 @@ emotion-based animations, and relationship progression.
 | `backend/affection_manager.py` | Relationship progression and state persistence |
 | `backend/emotion_detector.py` | Analyzes text for emotion keywords |
 | `backend/models.py` | Waifu persona definitions |
+| `backend/auth.py` | PAM Platform authentication (Issue #2) |
+| `backend/memory.py` | Conversation memory via embeddings (Issue #7) |
 
 ### Frontend
 | File | Purpose |
@@ -49,12 +53,15 @@ emotion-based animations, and relationship progression.
 | `frontend/src/config.js` | Centralized configuration |
 | `frontend/src/components/WaifuCanvas.js` | Three.js 3D rendering |
 | `frontend/src/components/ChatInterface.js` | Chat UI and WebSocket handling |
+| `frontend/src/components/AuthPanel.js` | Login UI with API key input (Issue #2) |
 | `frontend/src/hooks/useWebSocket.js` | WebSocket connection hook |
+| `frontend/src/hooks/useAuth.js` | Authentication state management (Issue #2) |
 
 ### Configuration
 | File | Purpose |
 |------|---------|
 | `backend/.env.artemis` | Artemis API configuration (recommended) |
+| `backend/.env.example` | Full configuration template with all options |
 | `backend/.env.vllm` | Direct vLLM configuration |
 | `backend/.env.ollama` | Ollama local configuration |
 | `backend/.env.openai` | OpenAI API configuration |
@@ -70,7 +77,7 @@ chmod +x *.sh
 ./setup.sh
 
 # Configure for Artemis (SolidRusT production)
-cp backend/.env.artemis backend/.env
+cp backend/.env.example backend/.env
 # Edit backend/.env with your API key from console.solidrust.ai
 
 # Run
@@ -94,6 +101,21 @@ LLM_API_KEY=srt_prod_xxx  # Get from https://console.solidrust.ai
 LLM_MODEL=vllm-primary
 ```
 
+### PAM Authentication (Issue #2)
+```bash
+ENABLE_AUTH=true  # Set to true for production
+PAM_URL=https://console.solidrust.ai
+PAM_VALIDATE_ENDPOINT=/v1/keys/validate
+```
+
+### Conversation Memory (Issue #7)
+```bash
+ENABLE_MEMORY=true
+EMBEDDINGS_URL=https://artemis.hq.solidrust.net/v1/embeddings
+EMBEDDINGS_MODEL=bge-m3
+MEMORY_TOP_K=5
+```
+
 ### Parameters
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -103,10 +125,79 @@ LLM_MODEL=vllm-primary
 | `LLM_MODEL` | none | Model name |
 | `LLM_TEMPERATURE` | 0.85 | Response creativity (0.0-1.0) |
 | `LLM_MAX_TOKENS` | 200 | Max response length |
-| `LLM_TIMEOUT` | 30.0 | Request timeout in seconds |
 | `ENABLE_VOICE_SYNTHESIS` | false | Enable browser TTS |
 | `ENABLE_ADVANCED_PHYSICS` | true | Enable physics simulation |
 | `MAX_AFFECTION_LEVEL` | 100 | Max affection points |
+| `ENABLE_AUTH` | false | Enable PAM authentication |
+| `ENABLE_MEMORY` | true | Enable conversation memory |
+
+---
+
+## Authentication Flow (Issue #2)
+
+```
+1. User visits app
+2. AuthPanel shown (login or guest mode)
+3. User enters API key from console.solidrust.ai
+4. Backend validates key with PAM /v1/keys/validate
+5. Session token issued for WebSocket auth
+6. Affection/memory data tied to user_id (not browser session)
+```
+
+**Features:**
+- API key validation against PAM Platform
+- Session token management (24-hour expiry)
+- Guest mode for anonymous users
+- Persistent affection across sessions
+- User identity for conversation memory
+
+---
+
+## Conversation Memory (Issue #7)
+
+```
+User Message
+     |
+     v
++-------------+
+|   Embed via |<-- artemis.hq.solidrust.net/v1/embeddings
+|   bge-m3    |
++-------------+
+     |
+     v
++-------------+     +-------------+
+|  Store in   |<--> |   SQLite    |
+| Vector DB   |     | (waifu_memories.db)
++-------------+     +-------------+
+     |
+     v
++-------------+
+|  Retrieve   |
+|   Top-K     |<-- Cosine similarity search
+|  Memories   |
++-------------+
+     |
+     v
++-------------+
+|Inject into  |
+|System Prompt|
++-------------+
+```
+
+**Memory Categories:**
+- **Facts**: User's name, preferences, mentioned details
+- **Emotions**: How past conversations felt
+- **Topics**: What they've discussed before
+- **Milestones**: Relationship progression events
+
+**Example Prompt Injection:**
+```
+[Memories of User:]
+- They mentioned they work as a software engineer
+- Last week they were stressed about a deadline
+- They prefer being called by their nickname "Alex"
+- We talked about anime recommendations before
+```
 
 ---
 
@@ -145,11 +236,25 @@ asyncio.run(test())
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| POST | `/api/auth/login` | Authenticate with API key |
+| POST | `/api/auth/logout` | Invalidate session |
+| GET | `/api/auth/me` | Get current user info |
 | GET | `/api/models` | List available waifu models |
 | GET | `/api/models/{id}` | Get specific model details |
 | GET | `/api/affection/{model_id}` | Get affection level |
 | POST | `/api/affection/{model_id}` | Update affection |
 | WS | `/ws/{client_id}` | Real-time chat connection |
+
+### WebSocket Message Types
+| Type | Direction | Description |
+|------|-----------|-------------|
+| `authenticate` | Client->Server | Authenticate with session token |
+| `authenticated` | Server->Client | Auth success response |
+| `auth_error` | Server->Client | Auth failure response |
+| `chat` | Client->Server | Send user message |
+| `response` | Server->Client | Waifu response with affection/animation |
+| `change_model` | Client->Server | Switch waifu character |
+| `model_changed` | Server->Client | Model change confirmation |
 
 ---
 
@@ -189,7 +294,7 @@ The system detects emotions from text and triggers corresponding animations:
 
 ### Phase 2: Containerization
 - Dockerfile for backend (Python 3.11)
-- Dockerfile for frontend (Node.js build → nginx)
+- Dockerfile for frontend (Node.js build -> nginx)
 - docker-compose.yml for local testing
 
 ### Phase 3: K8s Deployment
@@ -201,7 +306,6 @@ The system detects emotions from text and triggers corresponding animations:
 - ElevenLabs/Azure TTS (Issue #3)
 - Image generation for outfits (Issue #4)
 - PostgreSQL for persistence (Issue #6)
-- Embeddings for memory (Issue #7)
 
 ---
 
@@ -223,6 +327,18 @@ The system detects emotions from text and triggers corresponding animations:
 2. Check image format (PNG, 1024x2048)
 3. Clear browser cache
 
+### Authentication Issues
+1. Verify API key is valid at console.solidrust.ai
+2. Check PAM_URL is correct in backend `.env`
+3. Check browser console for auth errors
+4. Try guest mode to isolate auth vs app issues
+
+### Memory Not Working
+1. Verify ENABLE_MEMORY=true in `.env`
+2. Check EMBEDDINGS_URL is accessible
+3. Check backend logs for embedding errors
+4. Verify API key has embeddings access
+
 See `docs/TROUBLESHOOTING.md` for more.
 
 ---
@@ -239,4 +355,5 @@ See `docs/TROUBLESHOOTING.md` for more.
 
 ---
 
-**Version**: 1.0 | **Updated**: January 2026
+**Version**: 1.1 | **Updated**: January 2026
+**Changes**: Added PAM authentication (#2) and conversation memory (#7)
