@@ -3,8 +3,9 @@ Waifu Animation Chat Backend
 Handles AI chat integration and animation state management
 """
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from typing import Dict, List, Optional
 import asyncio
@@ -20,12 +21,23 @@ from waifu_manager import WaifuModelManager, WaifuProfile
 from llm_config import LLMClient, LLMProvider, get_llm_config, reload_config
 from affection_manager import get_affection_manager
 from database import get_db
+from auth import (
+    get_auth_manager, 
+    init_auth_manager, 
+    shutdown_auth_manager,
+    AuthSession
+)
+from memory import (
+    get_memory_manager,
+    init_memory_manager,
+    shutdown_memory_manager
+)
 
 # Load environment variables
 load_dotenv(override=True)  # Override ensures .env is reloaded
 
 # Application version
-APP_VERSION = "1.0.0-beta"
+APP_VERSION = "1.1.0-beta"
 
 # Initialize paths
 BASE_DIR = Path(__file__).parent.parent
@@ -37,14 +49,28 @@ waifu_manager = WaifuModelManager(MODELS_DIR, FRONTEND_MODELS_DIR)
 
 app = FastAPI()
 
+# Security
+security = HTTPBearer(auto_error=False)
+
 # Enable CORS for frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # TODO: Restrict in production (#2)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Startup/shutdown events
+@app.on_event("startup")
+async def startup_event():
+    await init_auth_manager()
+    await init_memory_manager()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    await shutdown_auth_manager()
+    await shutdown_memory_manager()
 
 # Animation states and emotions
 EMOTIONS = {
@@ -69,6 +95,15 @@ ANIMATION_ACTIONS = {
     "playful": ["tongue_out", "peace_sign", "hip_sway", "dance"],
     "seductive": ["sultry_look", "body_stretch", "bedroom_eyes", "slow_pose"]
 }
+
+# Request/Response Models
+class LoginRequest(BaseModel):
+    api_key: str
+
+class LoginResponse(BaseModel):
+    session_token: str
+    user: dict
+    expires_at: str
 
 class ChatMessage(BaseModel):
     text: str
@@ -156,7 +191,13 @@ def generate_animation_sequence(emotion: str, intensity: float = 0.5) -> List[Di
     
     return sequence
 
-async def call_llm_api(prompt: str, model_personality: str, chat_history: List[Dict] = None, affection_modifier: str = None) -> str:
+async def call_llm_api(
+    prompt: str, 
+    model_personality: str, 
+    chat_history: List[Dict] = None, 
+    affection_modifier: str = None,
+    memory_context: str = None
+) -> str:
     """Call LLM API for chat responses (supports vLLM, Ollama, OpenAI)"""
     
     # Reload config to pick up any .env changes
@@ -167,7 +208,8 @@ async def call_llm_api(prompt: str, model_personality: str, chat_history: List[D
 
 IMPORTANT: You should embody this character fully. Express emotions through actions in *asterisks* and use casual, flirty language when appropriate. Keep responses engaging and playful.
 
-{affection_modifier if affection_modifier else ''}"""
+{affection_modifier if affection_modifier else ''}
+{memory_context if memory_context else ''}"""
     
     # Build conversation history for context
     full_prompt = ""
@@ -202,6 +244,47 @@ IMPORTANT: You should embody this character fully. Express emotions through acti
             "neutral": "*smiles warmly* I'm having a small issue, but I'm still happy to chat with you!"
         }
         return demo_responses.get(emotion, demo_responses["neutral"])
+
+# Authentication endpoints
+@app.post("/api/auth/login")
+async def login(request: LoginRequest):
+    """Authenticate with PAM API key and get session token"""
+    auth_manager = get_auth_manager()
+    session = await auth_manager.authenticate(request.api_key)
+    
+    if not session:
+        raise HTTPException(status_code=401, detail={"error": "Invalid API key"})
+    
+    return {
+        "session_token": session.session_token,
+        "user": session.user.to_dict(),
+        "expires_at": session.expires_at.isoformat()
+    }
+
+@app.post("/api/auth/logout")
+async def logout(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Invalidate session and logout"""
+    if not credentials:
+        raise HTTPException(status_code=401, detail={"error": "No session token provided"})
+    
+    auth_manager = get_auth_manager()
+    success = auth_manager.invalidate_session(credentials.credentials)
+    
+    return {"success": success}
+
+@app.get("/api/auth/me")
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Get current authenticated user info"""
+    if not credentials:
+        raise HTTPException(status_code=401, detail={"error": "No session token provided"})
+    
+    auth_manager = get_auth_manager()
+    session = auth_manager.get_session(credentials.credentials)
+    
+    if not session:
+        raise HTTPException(status_code=401, detail={"error": "Invalid or expired session"})
+    
+    return session.user.to_dict()
 
 @app.get("/")
 async def root():
@@ -275,7 +358,9 @@ async def get_system_info():
             "voice_synthesis_provider": os.getenv("VOICE_SYNTHESIS_PROVIDER", "webspeech"),
             "advanced_physics": os.getenv("ENABLE_ADVANCED_PHYSICS", "true").lower() == "true",
             "max_affection_level": int(os.getenv("MAX_AFFECTION_LEVEL", "100")),
-            "nsfw_enabled": os.getenv("NSFW_ENABLED", "true").lower() == "true"
+            "nsfw_enabled": os.getenv("NSFW_ENABLED", "true").lower() == "true",
+            "auth_enabled": os.getenv("ENABLE_AUTH", "false").lower() == "true",
+            "memory_enabled": os.getenv("ENABLE_MEMORY", "true").lower() == "true"
         },
         "timestamp": datetime.now().isoformat()
     }
@@ -325,7 +410,9 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
         "model": "luna",
         "animation_state": AnimationState(),
         "chat_history": [],
-        "session_id": client_id  # Use client_id as session_id for now
+        "session_id": client_id,  # Can be updated with auth
+        "user_id": client_id,  # For memory system
+        "authenticated": False
     }
     
     # Initialize session in database
@@ -344,10 +431,31 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
             # Receive message from client
             data = await websocket.receive_json()
             
-            if data["type"] == "chat":
+            if data["type"] == "authenticate":
+                # Handle WebSocket authentication
+                session_token = data.get("session_token")
+                if session_token:
+                    auth_manager = get_auth_manager()
+                    session = auth_manager.get_session(session_token)
+                    if session:
+                        connections[client_id]["authenticated"] = True
+                        connections[client_id]["user_id"] = session.user.user_id
+                        connections[client_id]["session_id"] = session.user.user_id
+                        await websocket.send_json({
+                            "type": "authenticated",
+                            "user": session.user.to_dict()
+                        })
+                    else:
+                        await websocket.send_json({
+                            "type": "auth_error",
+                            "message": "Invalid or expired session"
+                        })
+            
+            elif data["type"] == "chat":
                 # Process chat message
                 user_message = data["message"]
                 model_id = connections[client_id]["model"]
+                user_id = connections[client_id]["user_id"]
                 profile = waifu_manager.get_profile(model_id)
                 
                 if not profile:
@@ -386,12 +494,25 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                 # Get affection-based response modifier
                 affection_modifier = affection_manager.get_affection_response_modifier(current_affection)
                 
-                # Get AI response with chat history and affection modifier
+                # Get memory context for personalized responses
+                memory_context = ""
+                try:
+                    memory_manager = get_memory_manager()
+                    memories = await memory_manager.retrieve_relevant_memories(
+                        user_id, model_id, user_message
+                    )
+                    if memories:
+                        memory_context = memory_manager.format_memories_for_prompt(memories)
+                except Exception as e:
+                    print(f"Error retrieving memories: {e}")
+                
+                # Get AI response with chat history, affection modifier, and memory context
                 ai_response = await call_llm_api(
                     user_message, 
                     profile.full_personality,
                     connections[client_id]["chat_history"],
-                    affection_modifier
+                    affection_modifier,
+                    memory_context
                 )
                 
                 # Process affection changes
@@ -403,6 +524,14 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                     emotion,
                     profile.dict()
                 )
+                
+                # Store memorable content from this conversation
+                try:
+                    await memory_manager.process_conversation(
+                        user_id, model_id, user_message, ai_response
+                    )
+                except Exception as e:
+                    print(f"Error processing memories: {e}")
                 
                 # Get available animations including unlocked ones
                 base_animations = ANIMATION_ACTIONS.get(emotion, ANIMATION_ACTIONS["neutral"])
