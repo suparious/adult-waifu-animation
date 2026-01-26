@@ -13,8 +13,8 @@ With deferred tool loading enabled, MCP tools DO NOT EXIST until loaded via Tool
 **You MUST call ToolSearch FIRST before using ANY MCP tool.**
 
 ```
-WRONG: Try to call mcp__aws__call_aws directly -> "No such tool available" error
-RIGHT: ToolSearch("select:mcp__aws__call_aws") -> tool loads -> call mcp__aws__call_aws
+WRONG: Try to call mcp__gitea__create_issue directly -> "No such tool available" error
+RIGHT: ToolSearch("select:mcp__gitea__create_issue") -> tool loads -> call mcp__gitea__create_issue
 ```
 
 **Pattern:**
@@ -23,7 +23,7 @@ RIGHT: ToolSearch("select:mcp__aws__call_aws") -> tool loads -> call mcp__aws__c
 
 If you don't know the exact name, use keyword search: `ToolSearch(query="+gitea issue")`
 
-Available MCP servers: time, calculator, kubernetes, github, gitea, stripe, aws, discord, postgres, redis
+Available MCP servers: calculator, gitea, github, kubernetes, time
 ---
 
 ## Architecture
