@@ -159,11 +159,15 @@ class LLMClient:
             raise Exception(f"Ollama API error: {response.status_code} - {response.text}")
     
     async def _generate_openai(self, prompt: str, system_prompt: str, **kwargs) -> str:
-        """Generate using OpenAI API"""
+        """Generate using OpenAI API or Artemis (OpenAI-compatible)"""
         headers = {
-            "Authorization": f"Bearer {self.config.api_key}",
             "Content-Type": "application/json"
         }
+        if self.config.api_key:
+            # Standard OpenAI Authorization header
+            headers["Authorization"] = f"Bearer {self.config.api_key}"
+            # Artemis uses X-API-Key for authentication
+            headers["X-API-Key"] = self.config.api_key
         
         messages = []
         if system_prompt:
