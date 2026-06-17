@@ -1,6 +1,6 @@
 # Core dependencies with Python 3.12 compatible versions
 setuptools>=69.0.0
-wheel>=0.41.0
+wheel>=0.47.0
 
 # Application dependencies
 fastapi==0.128.0
