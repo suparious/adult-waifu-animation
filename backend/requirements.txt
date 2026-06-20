@@ -3,7 +3,7 @@ setuptools>=69.0.0
 wheel>=0.41.0
 
 # Application dependencies
-fastapi==0.128.0
+fastapi==0.136.1
 uvicorn[standard]==0.40.0
 websockets==12.0
 httpx==0.28.1
